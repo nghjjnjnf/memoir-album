@@ -115,7 +115,7 @@ DEEPSEEK_VISION_API_KEY=your_vision_key_here
 ## 测试与合成数据
 
 ```bash
-pytest -q
+python -m pytest -q
 python scripts/run_synthetic_e2e.py --provider mock
 ```
 
