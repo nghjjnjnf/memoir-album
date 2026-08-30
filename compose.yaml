@@ -1,0 +1,15 @@
+services:
+  memoir-album:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      USE_MOCK_LLM: "${USE_MOCK_LLM:-true}"
+      VISION_MODE: "${VISION_MODE:-disabled}"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      DEEPSEEK_VISION_API_KEY: "${DEEPSEEK_VISION_API_KEY:-}"
+    volumes:
+      - memoir-data:/app/data
+
+volumes:
+  memoir-data:

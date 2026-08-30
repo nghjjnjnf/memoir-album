@@ -1,0 +1,45 @@
+from pathlib import Path
+
+
+STATIC = Path(__file__).resolve().parents[1] / "app" / "static"
+
+
+def test_chat_style_project_sidebar_structure():
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
+
+    assert html.index('id="newProjectButton"') < html.index('id="projectList"')
+    assert html.index('id="projectList"') < html.index('id="projectCreateCard"')
+    assert "最近项目" in html
+    assert 'class="sidebar-create-panel card compact hidden"' in html
+    assert 'button.append(title);' in script
+    assert 'button.append(title, meta);' not in script
+    assert '$("newProjectButton").addEventListener("click"' in script
+    assert ".layout {\n  width: 100%;\n  margin: 0;" in styles
+    assert ".sidebar-create-panel { margin-top: auto; }" in styles
+
+
+def test_workspace_tabs_belong_to_selected_project():
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+
+    project_workspace = html.index('id="projectWorkspace"')
+    project_heading = html.index('id="activeProjectTitle"')
+    project_navigation = html.index('id="workspacePageNav"')
+    first_project_page = html.index('data-workspace-page="story"')
+
+    assert project_workspace < project_heading < project_navigation < first_project_page
+    assert 'aria-label="当前项目内容"' in html
+
+
+def test_brand_aligns_with_sidebar_and_has_memoir_album_icon():
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
+
+    assert 'class="brand-mark"' in html
+    assert 'class="brand-album"' in html
+    assert 'class="brand-memory-head"' in html
+    assert "岁影" in html and "Memoir Album" in html
+    assert "padding: 9px 22px 9px 29px;" in styles
+    assert ".brand-block {\n  grid-column: 1;" in styles
+    assert ".status-pill {\n  grid-column: 2;" in styles

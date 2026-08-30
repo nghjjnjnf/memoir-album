@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>岁影-Memoir Album · 人生故事</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23788f7b'/%3E%3Cpath d='M17 19h30v26H17zM22 35l7-8 6 7 4-4 4 5' fill='none' stroke='%23fffaf0' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css?v=20260826-living-autobiography-1">
+  <link rel="stylesheet" href="/static/minimal.css?v=20260830-revision-candidate-1">
+</head>
+<body>
+  <div class="page-decoration decoration-one" aria-hidden="true"></div>
+  <div class="page-decoration decoration-two" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand-block">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 36 44" role="img">
+          <rect class="brand-album" x="5" y="5" width="26" height="34" rx="7"></rect>
+          <path class="brand-binding" d="M10 6v32"></path>
+          <circle class="brand-time-dot" cx="24" cy="13" r="3"></circle>
+          <circle class="brand-memory-head" cx="19" cy="22" r="3"></circle>
+          <path class="brand-memory-body" d="M19 25v7m0-4-4 3m4-3 4 3"></path>
+          <path class="brand-shadow" d="M15 34h9"></path>
+        </svg>
+      </span>
+      <h1><span>岁影</span><i>-</i><small>Memoir Album</small></h1>
+    </div>
+    <div id="systemStatus" class="status-pill">正在连接…</div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <button id="newProjectButton" class="sidebar-new-project" type="button" aria-expanded="false" aria-controls="projectCreateCard">
+        <span aria-hidden="true">＋</span>
+        <strong>New</strong>
+      </button>
+
+      <section class="sidebar-recents" aria-labelledby="recentProjectsTitle">
+        <div class="sidebar-recents-heading">
+          <h2 id="recentProjectsTitle">最近项目</h2>
+          <button id="refreshProjects" class="sidebar-refresh" type="button" aria-label="刷新最近项目" title="刷新最近项目">↻</button>
+        </div>
+        <div id="projectList" class="item-list empty-text">还没有项目</div>
+      </section>
+
+      <section class="privacy-note">
+        <strong>隐私提示</strong>
+        <span>照片与故事仅用于整理您的自传；画面线索会在讲述中自然求证，不会直接写入成稿。</span>
+      </section>
+
+      <section id="projectCreateCard" class="sidebar-create-panel card compact hidden">
+        <h2>新建自传</h2>
+        <form id="projectForm">
+          <label for="projectTitle">书稿名称</label>
+          <input id="projectTitle" value="我的人生故事" maxlength="80" required>
+          <label for="personSelect">叙述方式</label>
+          <select id="personSelect">
+            <option value="first">第一人称 · 我</option>
+            <option value="third">第三人称 · 他/她</option>
+          </select>
+          <button class="primary full" type="submit">新建一本自传</button>
+        </form>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <div id="welcome" class="welcome card">
+        <div class="welcome-illustration" aria-hidden="true">
+          <span class="book-page page-left"></span>
+          <span class="book-page page-right"></span>
+          <span class="book-heart">♥</span>
+          <span class="book-spark">✦</span>
+        </div>
+        <h2>先创建或选择一本自传</h2>
+        <p>之后上传一张照片，用文字讲述它背后的故事。系统会温和追问，再整理成一章。</p>
+        <div class="welcome-promise"><span>照片</span><i></i><span>故事</span><i></i><span>成书</span></div>
+      </div>
+
+      <div id="projectWorkspace" class="hidden">
+        <section class="project-head card">
+          <div>
+            <p class="eyebrow">正在编辑</p>
+            <h2 id="activeProjectTitle"></h2>
+          </div>
+          <div class="project-actions">
+            <label class="inline-field">全书人称
+              <select id="activePersonSelect">
+                <option value="first">第一人称</option>
+                <option value="third">第三人称</option>
+              </select>
+            </label>
+            <div class="button-row tight">
+              <button id="weaveBookButton" class="secondary small" type="button">生成完整自传</button>
+              <button id="exportButton" class="secondary small" type="button">导出数据</button>
+              <button id="deleteProjectButton" class="danger-button small" type="button">删除项目</button>
+            </div>
+          </div>
+        </section>
+
+        <nav id="workspacePageNav" class="workspace-page-nav project-local-nav hidden" aria-label="当前项目内容">
+          <button class="workspace-page-tab active" type="button" data-workspace-view="story">
+            <span>01</span><strong>照片</strong><small>采集和整理人生记忆</small>
+          </button>
+          <button class="workspace-page-tab" type="button" data-workspace-view="chapter">
+            <span>02</span><strong>章节</strong><small>阅读、修改和确认章节</small>
+          </button>
+          <button class="workspace-page-tab" type="button" data-workspace-view="book">
+            <span>03</span><strong>自传</strong><small>阅读不断生长的完整作品</small>
+          </button>
+        </nav>
+
+        <div class="steps" data-workspace-page="story">
+          <span class="step active">1 上传照片</span>
+          <span class="step">2 聊聊故事</span>
+          <span class="step">3 生成章节</span>
+          <span class="step">4 修改确认</span>
+        </div>
+
+        <section id="uploadPanel" class="card" data-workspace-page="story">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">新的记忆</p>
+              <h2>上传一张有故事的照片</h2>
+            </div>
+            <span class="soft-tag">JPG / PNG / WebP</span>
+          </div>
+          <form id="uploadForm" class="upload-grid">
+            <label id="dropZone" class="drop-zone" for="photoInput">
+              <input id="photoInput" name="image" type="file" accept="image/jpeg,image/png,image/webp" required>
+              <span class="upload-icon">＋</span>
+              <strong>选择照片</strong>
+              <small>识图结果只在后台辅助提问，以您的讲述为准</small>
+              <img id="uploadPreview" class="hidden" alt="待上传照片预览">
+            </label>
+            <div class="upload-fields">
+              <label for="photoTitle">这段记忆的标题（可不填）</label>
+              <input id="photoTitle" maxlength="100" placeholder="不填写时，会根据照片和已有记忆生成">
+              <label for="photoNote">给自己的一句提示（可不填）</label>
+              <textarea id="photoNote" rows="5" placeholder="例如：这是我第一次参加工作的合影"></textarea>
+              <button class="primary" type="submit">保存照片，开始讲述</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="interviewPanel" class="card hidden" data-workspace-page="story">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">故事访谈</p>
+              <h2>我们慢慢聊</h2>
+            </div>
+            <span id="turnCount" class="soft-tag">已回答 0 次</span>
+          </div>
+          <div class="interview-layout">
+            <figure class="story-photo-frame">
+              <span class="photo-tape" aria-hidden="true"></span>
+              <img id="storyPhoto" class="story-photo" alt="正在讲述的照片">
+              <figcaption>一张照片，一段只属于您的故事</figcaption>
+            </figure>
+            <div>
+              <section id="visionBox" class="vision-status-box hidden" aria-live="polite"></section>
+              <div id="chatMessages" class="chat" aria-live="polite"></div>
+              <form id="replyForm" class="reply-box">
+                <label for="replyText">您的讲述</label>
+                <textarea id="replyText" rows="4" placeholder="想到多少就说多少，也可以写“记不清”或“不想说”" required></textarea>
+                <div class="button-row">
+                  <button class="primary" type="submit">发送这段讲述</button>
+                  <button id="generateButton" class="secondary" type="button">先看看整理后的故事</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <details class="facts-panel">
+            <summary>查看系统记下的事实线索</summary>
+            <ul id="factList"></ul>
+          </details>
+        </section>
+
+        <section id="chapterPageEmpty" class="card workspace-empty hidden" data-workspace-page="chapter">
+          <div class="workspace-empty-icon" aria-hidden="true">章</div>
+          <p class="eyebrow">章节草稿</p>
+          <h2>选择一章，慢慢读一读</h2>
+          <p>请先从“照片与时间线”的章节目录中选择故事；生成的新章节也会自动在这里打开。</p>
+          <button class="secondary" type="button" data-go-workspace="story">前往章节目录</button>
+        </section>
+
+        <section id="chapterPanel" class="card hidden" data-workspace-page="chapter">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">章节草稿</p>
+              <h2 id="chapterTitle"></h2>
+            </div>
+            <span id="chapterStatus" class="soft-tag"></span>
+          </div>
+          <div id="chapterContent" class="chapter-content"></div>
+          <div id="reviewInfo" class="review-box"></div>
+          <section id="revisionCandidatePanel" class="revision-candidate hidden" aria-live="polite">
+            <header class="revision-candidate-header">
+              <div>
+                <p class="eyebrow">修改候选稿</p>
+                <h3 id="revisionCandidateTitle"></h3>
+              </div>
+              <span class="candidate-status">尚未采用</span>
+            </header>
+            <p class="candidate-note">这份修改稿不会自动替换当前章节。请比较后决定是否采用。</p>
+            <div id="revisionCandidateMemory" class="candidate-memory"></div>
+            <div id="revisionCandidateContent" class="chapter-content candidate-content"></div>
+            <div id="revisionCandidateReview" class="review-box"></div>
+            <div class="button-row candidate-actions">
+              <button id="continueRevisionButton" class="secondary" type="button">继续调整</button>
+              <button id="discardRevisionButton" class="secondary" type="button">放弃修改</button>
+              <button id="adoptRevisionButton" class="primary" type="button">采用这版</button>
+            </div>
+          </section>
+          <div id="relationBox" class="relation-box hidden"></div>
+          <div id="shareBox" class="share-box hidden"></div>
+          <p id="nextStorySuggestion" class="next-suggestion"></p>
+          <form id="revisionForm" class="revision-box">
+            <label for="revisionText">哪里还想换一种写法？</label>
+            <div class="revision-presets" aria-label="快捷修改方向">
+              <button class="revision-chip" type="button" data-revision="保持所有硬事实不变，把语言写得更朴实自然，减少比喻和心理补写。">更朴实</button>
+              <button class="revision-chip" type="button" data-revision="保持所有硬事实不变，增强场景、节奏和情感层次，让文字更有文学性，但不要虚构直接引语。">更有文学性</button>
+              <button class="revision-chip" type="button" data-revision="保持所有硬事实不变，重写开头和结尾，突出这张照片为什么值得留下、它代表了人生中的什么变化。">突出照片意义</button>
+              <button id="correctionChip" class="revision-chip correction" type="button">这个细节不准确</button>
+            </div>
+            <textarea id="revisionText" rows="3" placeholder="也可以直接说：把‘……’改成‘……’；这一段太夸张；结尾再有力量一些"></textarea>
+            <div class="button-row">
+              <button id="revisionSubmit" class="secondary" type="submit">生成修改候选稿</button>
+              <button id="shareButton" class="secondary" type="button">生成私密分享链接</button>
+              <button id="confirmButton" class="primary" type="button">我确认这一版</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="bookPageEmpty" class="card workspace-empty hidden" data-workspace-page="book">
+          <div class="workspace-empty-icon" aria-hidden="true">书</div>
+          <p class="eyebrow">一张照片也可以开始</p>
+          <h2>把照片故事写成真正的个人自传</h2>
+          <p>照片故事会原样保留。系统将用第三人称重新组织人生主线、人物发展和照片意义；以后加入新照片，还可以生成新的成长版本。</p>
+          <button class="secondary" type="button" data-generate-book>生成第一版自传</button>
+        </section>
+
+        <section id="bookEditionPanel" class="card hidden" data-workspace-page="book">
+          <div class="autobiography-cover">
+            <p id="bookEditionKicker" class="eyebrow">第三人称个人自传</p>
+            <h2 id="bookEditionTitle">我的人生自传</h2>
+            <p id="bookEditionSubtitle" class="autobiography-subtitle"></p>
+            <div class="autobiography-cover-meta">
+              <span id="bookEditionStatus" class="soft-tag"></span>
+              <span id="bookEditionScope" class="soft-tag"></span>
+            </div>
+          </div>
+          <section class="autobiography-portrait">
+            <p class="eyebrow">这本书里的她</p>
+            <p id="bookCharacterPortrait"></p>
+          </section>
+          <section class="autobiography-preface">
+            <p class="eyebrow">序</p>
+            <div id="bookPreface" class="autobiography-prose"></div>
+          </section>
+          <p id="bookArc" class="book-arc"></p>
+          <div id="bookThreads" class="book-threads"></div>
+          <div id="bookChanges" class="book-changes"></div>
+          <section class="autobiography-afterword">
+            <p class="eyebrow">后记</p>
+            <div id="bookAfterword" class="autobiography-prose"></div>
+          </section>
+          <div id="bookReview" class="review-box"></div>
+          <div class="button-row">
+            <button id="confirmBookEditionButton" class="primary" type="button">确认这一版自传</button>
+            <button id="updateAutobiographyButton" class="secondary" type="button">根据最新照片重新成书</button>
+          </div>
+        </section>
+
+        <section class="card" data-workspace-page="story">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">个人记忆档案</p>
+              <h2>我的人生时间线</h2>
+            </div>
+            <div class="timeline-header-actions">
+              <button id="peopleButton" class="people-entry-button" type="button">
+                <span>人物</span><span id="peopleCount" class="people-count hidden"></span>
+              </button>
+              <span class="soft-tag">按经历时间排列</span>
+            </div>
+          </div>
+          <p class="timeline-help">上传先后不会决定顺序；系统会结合年份、去年等相对时间和“初三、大学毕业”等人生阶段自动编排。</p>
+          <div id="timelineList" class="timeline-list empty-text">还没有时间线记录。</div>
+        </section>
+
+        <section class="card" data-workspace-page="story">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">章节目录</p>
+              <h2>已经留下的故事</h2>
+            </div>
+          </div>
+          <div id="chapterList" class="chapter-list empty-text">还没有章节，从一张照片开始吧。</div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="peopleDialog" class="people-dialog" aria-labelledby="peopleDialogTitle">
+    <section class="people-dialog-card">
+      <header class="people-dialog-header">
+        <div>
+          <p class="eyebrow">自传人物档案</p>
+          <h2 id="peopleDialogTitle">那些出现在生命里的人</h2>
+        </div>
+        <button id="closePeopleDialog" class="dialog-close-button" type="button" aria-label="关闭人物簿">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <p id="peopleOverview" class="people-overview">正在从照片、访谈和自传中整理人物关系……</p>
+      <div id="peopleStats" class="people-stats"></div>
+      <div id="peopleCatalog" class="people-catalog"><div class="people-loading">正在整理人物档案，请稍候……</div></div>
+      <p class="people-safety-note">人物身份与关系以用户口述为准；仅在照片中出现但尚未确认的人物会单独标注。</p>
+    </section>
+  </dialog>
+
+  <dialog id="photoDeleteDialog" class="choice-dialog" aria-labelledby="photoDeleteTitle">
+    <form id="photoDeleteForm" class="choice-dialog-card">
+      <p class="eyebrow">删除照片</p>
+      <h2 id="photoDeleteTitle">这张照片要怎样处理？</h2>
+      <p class="choice-dialog-intro">默认只删除照片文件，已经聊过的回忆、章节和完整自传都会保留。</p>
+      <label class="delete-choice selected">
+        <input type="radio" name="photoDeleteMode" value="asset_only" checked>
+        <span><strong>只删除照片</strong><small>推荐选择。故事文字、访谈记忆与自传版本保持不变。</small></span>
+      </label>
+      <label class="delete-choice danger-choice">
+        <input type="radio" name="photoDeleteMode" value="asset_and_story">
+        <span><strong>照片和相关故事一起删除</strong><small>相关独立章节与由它生成的整书版本也会删除，且无法恢复。</small></span>
+      </label>
+      <div class="button-row dialog-actions">
+        <button id="cancelPhotoDelete" class="secondary" type="button">先不删除</button>
+        <button id="confirmPhotoDelete" class="danger-button" type="submit">只删除照片</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/static/app.js?v=20260830-revision-candidate-1" defer></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.venv
+.vision-venv
+__pycache__
+.pytest_cache
+data
+evals/runs
+outputs
+tmp-ui-review
+node_modules
+*.log
+*.bak

@@ -1,0 +1,51 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+.vision-venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.py[cod]
+
+# Runtime data: databases, user photos, browser profiles and backups
+data/*
+!data/media/
+data/media/*
+!data/media/.gitkeep
+*.db
+*.db-*
+*.sqlite*
+*.bak
+
+# Generated evaluation and UI artifacts
+evals/runs/
+tmp-ui-review/
+outputs/*
+!outputs/github-demo-timeline.png
+!outputs/github-demo-book.png
+!outputs/revision-candidate-panel.png
+
+# Logs and local processes
+*.log
+server.out.log
+server.err.log
+
+# Frontend/browser tooling
+node_modules/
+playwright-report/
+test-results/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local dependencies and caches
+vendor/
