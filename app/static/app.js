@@ -986,11 +986,6 @@ function renderBookEdition(edition, shouldScroll = true) {
     item.appendChild(insight);
     changes.appendChild(item);
   });
-  const review = edition.review || {};
-  $("bookReview").className = `review-box ${passed ? "ok" : "warn"}`;
-  $("bookReview").textContent = passed
-    ? `第三人称终审通过 · 照片覆盖 ${Math.round((review.photo_coverage || 0) * 100)}% · 故事覆盖 ${Math.round((review.source_coverage || 0) * 100)}% · 文学性 ${review.literary_quality_score || "—"}/5 · 人物价值 ${review.value_expression_score || "—"}/5`
-    : `终审发现：${(review.issues || []).join("；") || "仍需继续修改"}`;
   $("confirmBookEditionButton").disabled = !passed || edition.status === "confirmed";
   $("confirmBookEditionButton").textContent = edition.status === "confirmed" ? "这一版自传已确认" : "确认这一版自传";
   if (shouldScroll) {

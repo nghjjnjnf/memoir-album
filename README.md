@@ -123,7 +123,7 @@ python -m pytest -q
 python scripts/run_synthetic_e2e.py --provider mock
 ```
 
-当前有49项自动化测试，覆盖照片安全、访谈策略、语音输入界面、记忆抽取、时间解析、上下文压缩、章节生成、候选修改、事实追加更正、版本确认、分享绑定和整书编排。自动测试使用临时目录与 Mock 模型，不调用 DeepSeek。
+当前有50项自动化测试，覆盖照片安全、访谈策略、语音输入界面、记忆抽取、时间解析、上下文压缩、章节生成、候选修改、事实追加更正、版本确认、分享绑定和整书编排。自动测试使用临时目录与 Mock 模型，不调用 DeepSeek。
 
 `evals/fixtures/` 提供三张合成照片和配套口述，可用于无隐私风险的端到端演示。
 
@@ -139,7 +139,7 @@ app/
   static/             本地 Demo 前端
 knowledge/            写作方法 RAG 卡片
 evals/fixtures/       合成测试照片与口述
-tests/                49项自动化回归
+tests/                50项自动化回归
 docs/                 产品、记忆、RAG与实施文档
 ```
 
