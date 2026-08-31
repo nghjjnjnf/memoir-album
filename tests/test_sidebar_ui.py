@@ -76,5 +76,7 @@ def test_book_page_hides_internal_review_metrics():
     assert opening < portrait < preface
     assert ".autobiography-cover {\n  width: 50%;" in styles
     assert "grid-template-columns: minmax(0, 1fr);" in styles
+    assert "max-width: 920px;" in styles
+    assert "padding: 12px clamp(22px, 4vw, 36px);" in styles
     assert ".autobiography-opening .autobiography-portrait" in styles
     assert ".autobiography-opening .autobiography-preface" in styles

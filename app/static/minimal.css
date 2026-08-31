@@ -677,7 +677,7 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 .autobiography-opening {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  max-width: 850px;
+  max-width: 920px;
   margin: 28px auto;
   overflow: hidden;
   background: #fff;
@@ -688,9 +688,16 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 .autobiography-opening .autobiography-preface {
   max-width: none;
   margin: 0;
-  padding: 27px clamp(22px, 5vw, 48px);
+  padding: 12px clamp(22px, 4vw, 36px);
   border: 0;
   border-radius: 0;
+}
+.autobiography-opening .eyebrow { margin-bottom: 4px; }
+.autobiography-opening .autobiography-portrait > p:last-child,
+.autobiography-opening .autobiography-prose {
+  margin-top: 4px;
+  font-size: 16px;
+  line-height: 1.65;
 }
 .autobiography-opening .autobiography-portrait { background: #f0f4f0; }
 .autobiography-opening .autobiography-preface {
