@@ -10,14 +10,16 @@ def test_chat_style_project_sidebar_structure():
     styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
 
     assert html.index('id="newProjectButton"') < html.index('id="projectList"')
-    assert html.index('id="projectList"') < html.index('id="projectCreateCard"')
+    assert html.index("</main>") < html.index('id="projectCreateDialog"')
     assert "最近项目" in html
-    assert 'class="sidebar-create-panel card compact hidden"' in html
+    assert 'class="project-create-dialog"' in html
+    assert "sidebar-create-panel" not in html
     assert 'button.append(title);' in script
     assert 'button.append(title, meta);' not in script
     assert '$("newProjectButton").addEventListener("click"' in script
     assert ".layout {\n  width: 100%;\n  margin: 0;" in styles
-    assert ".sidebar-create-panel { margin-top: auto; }" in styles
+    assert "dialog.showModal()" in script
+    assert ".project-create-dialog::backdrop" in styles
 
 
 def test_workspace_tabs_belong_to_selected_project():

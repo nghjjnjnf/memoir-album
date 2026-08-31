@@ -264,7 +264,8 @@ async function selectProject(projectId) {
   emptyBookButton.disabled = $("weaveBookButton").disabled;
   emptyBookButton.title = $("weaveBookButton").title;
   if (demoMode) {
-    $("projectCreateCard").classList.add("hidden");
+    if ($("projectCreateDialog").open) $("projectCreateDialog").close();
+    $("newProjectButton").classList.add("hidden");
     $("deleteProjectButton").classList.add("hidden");
   }
 
@@ -1008,8 +1009,7 @@ $("projectForm").addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: $("projectTitle").value, narrative_person: $("personSelect").value }),
     });
-    $("projectCreateCard").classList.add("hidden");
-    $("newProjectButton").setAttribute("aria-expanded", "false");
+    $("projectCreateDialog").close();
     await loadProjects(project.id);
     toast("自传项目已经建好，可以上传第一张照片了");
   } catch (error) { toast(error.message, true); }
@@ -1017,12 +1017,26 @@ $("projectForm").addEventListener("submit", async (event) => {
 });
 
 $("newProjectButton").addEventListener("click", () => {
-  const panel = $("projectCreateCard");
-  const opening = panel.classList.contains("hidden");
-  panel.classList.toggle("hidden", !opening);
-  $("newProjectButton").setAttribute("aria-expanded", String(opening));
-  if (opening) window.setTimeout(() => $("projectTitle").focus(), 0);
+  const dialog = $("projectCreateDialog");
+  if (!dialog.open) dialog.showModal();
+  $("newProjectButton").setAttribute("aria-expanded", "true");
+  window.setTimeout(() => $("projectTitle").select(), 0);
 });
+
+$("projectCreateDialog").addEventListener("close", () => {
+  $("newProjectButton").setAttribute("aria-expanded", "false");
+});
+
+$("projectCreateDialog").addEventListener("cancel", () => {
+  $("newProjectButton").setAttribute("aria-expanded", "false");
+});
+
+$("projectCreateDialog").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) event.currentTarget.close();
+});
+
+$("closeProjectCreateDialog").addEventListener("click", () => $("projectCreateDialog").close());
+$("cancelProjectCreate").addEventListener("click", () => $("projectCreateDialog").close());
 
 $("activePersonSelect").addEventListener("change", async (event) => {
   try {

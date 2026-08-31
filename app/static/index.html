@@ -6,7 +6,7 @@
   <title>岁影-Memoir Album · 人生故事</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23788f7b'/%3E%3Cpath d='M17 19h30v26H17zM22 35l7-8 6 7 4-4 4 5' fill='none' stroke='%23fffaf0' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css?v=20260826-living-autobiography-1">
-  <link rel="stylesheet" href="/static/minimal.css?v=20260831-voice-composer-1">
+  <link rel="stylesheet" href="/static/minimal.css?v=20260831-project-dialog-1">
 </head>
 <body>
   <div class="page-decoration decoration-one" aria-hidden="true"></div>
@@ -30,7 +30,7 @@
 
   <main class="layout">
     <aside class="sidebar">
-      <button id="newProjectButton" class="sidebar-new-project" type="button" aria-expanded="false" aria-controls="projectCreateCard">
+      <button id="newProjectButton" class="sidebar-new-project" type="button" aria-expanded="false" aria-controls="projectCreateDialog">
         <span aria-hidden="true">＋</span>
         <strong>New</strong>
       </button>
@@ -48,19 +48,6 @@
         <span>照片与故事仅用于整理您的自传；画面线索会在讲述中自然求证，不会直接写入成稿。</span>
       </section>
 
-      <section id="projectCreateCard" class="sidebar-create-panel card compact hidden">
-        <h2>新建自传</h2>
-        <form id="projectForm">
-          <label for="projectTitle">书稿名称</label>
-          <input id="projectTitle" value="我的人生故事" maxlength="80" required>
-          <label for="personSelect">叙述方式</label>
-          <select id="personSelect">
-            <option value="first">第一人称 · 我</option>
-            <option value="third">第三人称 · 他/她</option>
-          </select>
-          <button class="primary full" type="submit">新建一本自传</button>
-        </form>
-      </section>
     </aside>
 
     <section class="workspace">
@@ -317,6 +304,34 @@
     </section>
   </main>
 
+  <dialog id="projectCreateDialog" class="project-create-dialog" aria-labelledby="projectCreateTitle">
+    <form id="projectForm" class="project-create-card">
+      <header class="project-create-header">
+        <div>
+          <p class="eyebrow">新的故事</p>
+          <h2 id="projectCreateTitle">创建一本个人自传</h2>
+        </div>
+        <button id="closeProjectCreateDialog" class="dialog-close-button" type="button" aria-label="关闭新建窗口">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <p class="project-create-intro">先为这本自传取一个暂时的名字，之后可以随时修改。</p>
+      <div class="project-create-fields">
+        <label for="projectTitle">书稿名称</label>
+        <input id="projectTitle" value="我的人生故事" maxlength="80" autocomplete="off" required>
+        <label for="personSelect">叙述方式</label>
+        <select id="personSelect">
+          <option value="first">第一人称 · 我</option>
+          <option value="third">第三人称 · 他/她</option>
+        </select>
+      </div>
+      <div class="project-create-actions">
+        <button id="cancelProjectCreate" class="secondary" type="button">取消</button>
+        <button class="primary" type="submit">创建自传</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="peopleDialog" class="people-dialog" aria-labelledby="peopleDialogTitle">
     <section class="people-dialog-card">
       <header class="people-dialog-header">
@@ -356,6 +371,6 @@
   </dialog>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/static/app.js?v=20260831-voice-composer-1" defer></script>
+  <script src="/static/app.js?v=20260831-project-dialog-1" defer></script>
 </body>
 </html>
