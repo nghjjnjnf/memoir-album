@@ -21,7 +21,11 @@ def test_chat_style_project_sidebar_structure():
     assert "dialog.showModal()" in script
     assert ".project-create-dialog::backdrop" in styles
     assert ".privacy-note {\n  margin-top: auto;" in styles
-    assert ".privacy-note strong { color: #47544c; font-size: 11px;" in styles
+    assert 'class="privacy-note-icon"' in html
+    assert 'role="tooltip"' in html
+    assert ".project-item.active::before { display: block; }" in styles
+    assert '.status-pill[data-state="offline"]::before' in styles
+    assert '$("systemStatus").dataset.state = "saved";' in script
 
 
 def test_workspace_tabs_belong_to_selected_project():
@@ -44,7 +48,7 @@ def test_brand_aligns_with_sidebar_and_has_memoir_album_icon():
     assert 'class="brand-album"' in html
     assert 'class="brand-memory-head"' in html
     assert "岁影" in html and "Memoir Album" in html
-    assert "padding: 9px 22px 9px 29px;" in styles
+    assert "padding: 11px 28px;" in styles
     assert ".brand-block {\n  grid-column: 1;" in styles
     assert ".status-pill {\n  grid-column: 2;" in styles
 

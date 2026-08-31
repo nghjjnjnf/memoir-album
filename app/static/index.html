@@ -6,7 +6,7 @@
   <title>岁影-Memoir Album · 人生故事</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23788f7b'/%3E%3Cpath d='M17 19h30v26H17zM22 35l7-8 6 7 4-4 4 5' fill='none' stroke='%23fffaf0' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css?v=20260826-living-autobiography-1">
-  <link rel="stylesheet" href="/static/minimal.css?v=20260831-book-visual-1">
+  <link rel="stylesheet" href="/static/minimal.css?v=20260831-app-shell-1">
 </head>
 <body>
   <div class="page-decoration decoration-one" aria-hidden="true"></div>
@@ -38,15 +38,21 @@
       <section class="sidebar-recents" aria-labelledby="recentProjectsTitle">
         <div class="sidebar-recents-heading">
           <h2 id="recentProjectsTitle">最近项目</h2>
-          <button id="refreshProjects" class="sidebar-refresh" type="button" aria-label="刷新最近项目" title="刷新最近项目">↻</button>
+          <button id="refreshProjects" class="sidebar-refresh" type="button" aria-label="刷新最近项目" title="刷新最近项目">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 8a7 7 0 1 0 1 6"></path>
+              <path d="M19 3v5h-5"></path>
+            </svg>
+          </button>
         </div>
         <div id="projectList" class="item-list empty-text">还没有项目</div>
       </section>
 
-      <section class="privacy-note">
-        <strong>隐私提示</strong>
-        <span>照片与故事仅用于整理您的自传；画面线索会在讲述中自然求证，不会直接写入成稿。</span>
-      </section>
+      <div class="privacy-note" tabindex="0" aria-describedby="privacyTooltip">
+        <span class="privacy-note-icon" aria-hidden="true">i</span>
+        <span>照片与故事仅保存在本地</span>
+        <span id="privacyTooltip" class="privacy-tooltip" role="tooltip">照片与故事仅用于整理您的自传；画面线索会在讲述中自然求证，不会直接写入成稿。</span>
+      </div>
 
     </aside>
 
@@ -373,6 +379,6 @@
   </dialog>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/static/app.js?v=20260831-book-cover-photo-1" defer></script>
+  <script src="/static/app.js?v=20260831-app-shell-1" defer></script>
 </body>
 </html>

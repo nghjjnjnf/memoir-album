@@ -195,16 +195,19 @@ async function loadHealth() {
   try {
     const health = await api("/api/health");
     if (demoMode) {
-      $("systemStatus").textContent = "本地保存";
+      $("systemStatus").textContent = "已保存至本地";
+      $("systemStatus").dataset.state = "saved";
       $("systemStatus").title = "内容已安全保存在本机 · 展示模式";
       return;
     }
     $("systemStatus").textContent = health.llm_mode === "mock" ? "本地模式" : "已连接";
+    $("systemStatus").dataset.state = "connected";
     $("systemStatus").title = health.llm_mode === "mock"
       ? "本地 Mock 模式 · 不发送文字"
       : `DeepSeek · ${health.model}${health.vision_enabled ? " · 视觉识图已开启" : ""}`;
   } catch (error) {
     $("systemStatus").textContent = "未连接";
+    $("systemStatus").dataset.state = "offline";
     $("systemStatus").title = "服务未连接";
   }
 }
