@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,11 @@ from app.agents import (
     _interview_reply_length_guidance,
     enforce_grounding_review,
     interview_priority_question,
+    next_interview_turn,
     normalize_interview_output,
+    previous_reply_openings,
+    reply_opening,
+    reply_opening_repeats,
 )
 from app.db import execute, fetch_all
 from app.main import app
@@ -293,6 +298,90 @@ def test_interview_length_guidance_does_not_add_story_content() -> None:
     assert guidance["suggested_min_chars"] < guidance["suggested_max_chars"]
     assert "天气" not in guidance["principle"]
     assert "照片" not in guidance["principle"]
+
+
+def test_previous_reply_openings_collects_recent_unique_assistant_openers() -> None:
+    turns = [
+        {"role": "assistant", "content": "原来是在上海外滩拍的呀，那背景看着确实有点像巴黎。"},
+        {"role": "user", "content": "对，外滩。"},
+        {"role": "assistant", "content": "原来你们下午还去了交大徐汇校区。"},
+        {"role": "user", "content": "嗯，她们从北京过来。"},
+        {"role": "assistant", "content": "“ 原来就是在门口打个卡呀。"},
+    ]
+    assert previous_reply_openings(turns, limit=3) == ["原来"]
+    assert reply_opening("  听到您讲起车间，") == "听到"
+    assert reply_opening("no chinese") == ""
+    assert reply_opening_repeats("原来是这样。", ["原来", "听到"]) is True
+    assert reply_opening_repeats("听到您说。", ["原来"]) is False
+    assert reply_opening_repeats("", ["原来"]) is False
+    user_only = [{"role": "user", "content": "原来你也在。"}]
+    assert previous_reply_openings(user_only) == []
+
+
+def test_interview_payload_carries_previous_reply_openings() -> None:
+    with TestClient(app) as client:
+        project = create_project(client, "开头去重测试")
+        _, session = upload_story(
+            client,
+            project["id"],
+            ["我和大学同学去上海外滩拍了照片。", "下午还去了交大徐汇校区。"],
+        )
+        runs = fetch_all(
+            "SELECT input_json FROM model_runs WHERE project_id = ? AND agent_name = 'interview_agent' ORDER BY created_at DESC",
+            (project["id"],),
+        )
+        assert runs
+        agent_input = json.loads(runs[0]["input_json"])
+        openings = agent_input["previous_reply_openings"]
+        assert isinstance(openings, list)
+        assert openings, "至少应包含此前 Mock 回应的开头"
+        assistant_contents = [
+            turn["content"] for turn in session["turns"] if turn["role"] == "assistant"
+        ]
+        for opening in openings:
+            assert any(content.lstrip().startswith(opening) for content in assistant_contents)
+        client.delete(f"/api/projects/{project['id']}")
+
+
+def test_repeated_reply_opening_triggers_editor_repair() -> None:
+    original_key = settings.deepseek_api_key
+    # 模拟 deepseek 模式但清空密钥：网关会确定性失败并走 Mock 兜底，
+    # 测试保持离线，同时验证门禁会触发 Reply Editor 重写。
+    object.__setattr__(settings, "use_mock_llm", False)
+    object.__setattr__(settings, "deepseek_api_key", "")
+    try:
+        with TestClient(app) as client:
+            project = create_project(client, "开头重写测试")
+            # 历史回应均以“您刚”开头；Mock 兜底回复同样以“您刚”开头，
+            # 因此该轮必然命中开头重复门禁并触发 Reply Editor 重写。
+            turns = [
+                {"role": "assistant", "content": "您刚才讲到外滩的合影，这个细节很具体。"},
+                {"role": "user", "content": "对，就在外滩。"},
+                {"role": "assistant", "content": "您刚才说下午还去了交大。"},
+                {"role": "user", "content": "嗯，交大徐汇校区。"},
+            ]
+            facts = [{"fact_type": "event", "value": "和大学同学在外滩拍照"}]
+            decision = asyncio.run(
+                next_interview_turn(
+                    turns,
+                    facts,
+                    turn_count=2,
+                    project_id=project["id"],
+                )
+            )
+            assert decision["reply"]
+            editor_runs = fetch_all(
+                "SELECT input_json FROM model_runs WHERE project_id = ? AND agent_name = 'interview_reply_editor' ORDER BY created_at",
+                (project["id"],),
+            )
+            assert editor_runs, "开头重复应触发 Reply Editor 重写"
+            editor_input = json.loads(editor_runs[0]["input_json"])
+            assert "您刚" in editor_input["forbidden_openings"]
+            assert editor_input["editor_reason"]
+            client.delete(f"/api/projects/{project['id']}")
+    finally:
+        object.__setattr__(settings, "use_mock_llm", True)
+        object.__setattr__(settings, "deepseek_api_key", original_key)
 
 
 def test_interview_tracks_unexplained_motivation_then_ambiguous_route() -> None:

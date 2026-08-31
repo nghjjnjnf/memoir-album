@@ -1222,7 +1222,7 @@ async def accept_reply(session_id: str, text: str) -> dict[str, Any]:
     )
     # 轮数只是节奏参考，不能覆盖 Interview Agent 的未解线索检查。
     ready = bool(decision.get("ready_to_draft"))
-    reply = str(decision.get("reply", "原来是这样呀。"))
+    reply = str(decision.get("reply", "是这样呀。"))
     question = str(decision.get("question", "")).strip()
     if ready:
         assistant_text = reply

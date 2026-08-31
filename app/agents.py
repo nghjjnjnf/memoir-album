@@ -116,6 +116,35 @@ CHAPTER_HARD_RISK_MARKERS = (
     "住在", "记不清", "队伍", "游客", "等待", "盯着", "灯光", "街头",
     "天又冷", "天气很冷", "天气冷", "拍了不少", "好几张照片",
 )
+_REPLY_OPENING_STRIP = re.compile(r"^[\s，。！？、；：…—“”\"'!?.,;:~～·（）()【】\[\]]+")
+
+
+def reply_opening(text: str) -> str:
+    """取回应开头的前两个有效汉字，用于跨轮次开头去重。"""
+    cleaned = _REPLY_OPENING_STRIP.sub("", str(text or ""))
+    match = re.match(r"[\u4e00-\u9fff]{2}", cleaned)
+    return match.group(0) if match else ""
+
+
+def previous_reply_openings(turns: list[dict[str, Any]], limit: int = 3) -> list[str]:
+    """收集最近几轮 assistant 回应的开头两字；按最近优先、去重。"""
+    openings: list[str] = []
+    for turn in reversed(turns):
+        if turn.get("role") != "assistant":
+            continue
+        opening = reply_opening(str(turn.get("content", "")))
+        if opening and opening not in openings:
+            openings.append(opening)
+        if len(openings) >= limit:
+            break
+    return openings
+
+
+def reply_opening_repeats(reply: str, openings: list[str]) -> bool:
+    opening = reply_opening(reply)
+    return bool(opening) and opening in openings
+
+
 def _assistant_text_after(turns: list[dict[str, Any]], index: int) -> str:
     return "\n".join(
         str(turn.get("content", ""))
@@ -513,6 +542,7 @@ async def next_interview_turn(
     fallback = _mock_interview(turn_count, facts, last_user_text)
     prompt_turns = model_turns if model_turns is not None else turns[-10:]
     length_guidance = _interview_reply_length_guidance(last_user_text)
+    openings = previous_reply_openings(turns)
     result = await gateway.generate_json(
         "interview_agent",
         INTERVIEW_SYSTEM,
@@ -525,13 +555,17 @@ async def next_interview_turn(
             "photo_observation_candidates": photo_observation,
             "context_control": context_control or {},
             "reply_length_guidance": length_guidance,
+            "previous_reply_openings": openings,
         },
         lambda: fallback,
     )
     validated = _validated(result, InterviewAgentOutput, fallback)
     normalized = normalize_interview_output(validated, turns, facts)
-    # 长度只是给 LLM 的软建议；只有安全过滤后几乎没有可读回应时才重新生成。
-    reply_needs_repair = len(re.sub(r"\s+", "", normalized["reply"])) < 12
+    # 长度只是给 LLM 的软建议；只有安全过滤后几乎没有可读回应，或回应开头
+    # 与最近几轮重复（例如每轮都以“原来”开头）时，才触发 Reply Editor 重写。
+    too_short = len(re.sub(r"\s+", "", normalized["reply"])) < 12
+    opener_repeats = reply_opening_repeats(normalized["reply"], openings)
+    reply_needs_repair = too_short or opener_repeats
     if not settings.use_mock_llm and reply_needs_repair:
         editor_payload = {
             "project_id": project_id,
@@ -542,7 +576,12 @@ async def next_interview_turn(
                 for fact in facts
             ],
             "original_reply": normalized["reply"],
-            "editor_reason": "安全门禁移除了部分内容，或回复没有形成完整的自然承接。",
+            "editor_reason": (
+                "回应开头与最近几轮回复的开头词重复，请换一种自然的承接方式重新开始。"
+                if opener_repeats and not too_short
+                else "安全门禁移除了部分内容，或回复没有形成完整的自然承接。"
+            ),
+            "forbidden_openings": openings,
             "fixed_question": normalized["question"],
             "ready_to_draft": normalized["ready_to_draft"],
             "reply_length_guidance": length_guidance,
@@ -558,10 +597,13 @@ async def next_interview_turn(
             edited_validated["question"] = normalized["question"]
             edited_validated["ready_to_draft"] = normalized["ready_to_draft"]
             normalized = normalize_interview_output(edited_validated, turns, facts)
-            if len(re.sub(r"\s+", "", normalized["reply"])) >= 12:
+            if (
+                len(re.sub(r"\s+", "", normalized["reply"])) >= 12
+                and not reply_opening_repeats(normalized["reply"], openings)
+            ):
                 break
             editor_payload["rejected_reply"] = normalized["reply"]
-            editor_payload["editor_reason"] = "上一版仍未形成足够完整且有事实依据的自然回应。"
+            editor_payload["editor_reason"] = "上一版仍未形成足够完整、且开头不与近期回复重复的自然回应。"
     return normalized
 
 

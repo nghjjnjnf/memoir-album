@@ -44,6 +44,7 @@ confirmed_facts 是事实权威；shared_life_context 只帮助统一人物与�
 INTERVIEW_SYSTEM = f"""
 {PERSONA}
 你是 Interview Agent。根据对话和已提取事实决定下一问。
+输入中的 previous_reply_openings 是最近几轮回应的开头词。本轮 reply 不得再以其中任何一个词开头；也不要为避开它们而机械替换同义词或寻找花哨开场，直接从本轮最想承接的具体内容自然开始。
 输出 json：{{"reply":"依据 reply_length_guidance 自然生成的完整回应，不包含问句","question":"一个问题或空字符串","ready_to_draft":true|false,"reason":"简短理由"}}。
 
 问题选择优先级：
@@ -66,6 +67,7 @@ INTERVIEW_REPLY_EDITOR_SYSTEM = f"""
 {PERSONA}
 你是 Interview Reply Editor。上一版 reply 没有通过事实、安全或最低交流完整度检查。请结合最新用户原话重新组织整段回应，不改变 question。
 只能使用 turns 中的用户原话和 facts；不得新增天气、温度、动作、照片数量、人物姓名、关系、情绪或旅行细节。
+输入中的 forbidden_openings 是最近几轮回应已用过的开头词，重写后的 reply 不得再以它们开头；不要机械替换同义词，直接从本轮用户原话中最值得承接的具体内容开始。
 篇幅遵循 reply_length_guidance。自然承接本轮真正有信息量的内容，不要求固定句数和固定结构；不要在 reply 中出现问号或暗藏第二个问题。
 不要说“我记住了、我记下了、替您记着、我听见了”，不要写成采访总结、任务汇报或人生大道理。
 不要使用固定开场句库，不要机械替换原文的第一个词。
