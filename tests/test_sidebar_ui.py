@@ -22,9 +22,10 @@ def test_chat_style_project_sidebar_structure():
     assert ".layout {\n  width: 100%;\n  margin: 0;" in styles
     assert "dialog.showModal()" in script
     assert ".project-create-dialog::backdrop" in styles
-    assert '<footer class="page-footer">' in html
-    assert html.index("</main>") < html.index('<footer class="page-footer">') < html.index('id="projectSettingsDialog"')
+    assert '<footer class="page-footer">' not in html
+    assert html.index('<aside class="sidebar">') < html.index('class="privacy-note"') < html.index("</aside>")
     assert ".privacy-note {\n  width: fit-content;" in styles
+    assert "position: fixed;\n  z-index: 12;\n  left: 24px;\n  bottom: 18px;" in styles
     assert "min-height: 0;\n  max-height: none;" in styles
     assert 'class="privacy-note-icon"' in html
     assert 'role="tooltip"' in html

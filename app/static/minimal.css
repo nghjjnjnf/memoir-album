@@ -296,8 +296,11 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 
 .privacy-note {
   width: fit-content;
-  margin: 0 auto;
-  position: relative;
+  margin: 0;
+  position: fixed;
+  z-index: 12;
+  left: 24px;
+  bottom: 18px;
   padding: 8px 7px;
   display: flex;
   flex-direction: row;
@@ -311,7 +314,6 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   line-height: 1.4;
   outline: none;
 }
-.page-footer { padding: 0 20px 18px; }
 .privacy-note::before { display: none; }
 .privacy-note-icon {
   width: 17px;
@@ -927,6 +929,7 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   .workspace-page-nav { width: 270px; }
   .layout { grid-template-columns: 1fr; padding: 14px 16px 40px; }
   .sidebar { min-height: 0; max-height: none; position: static; order: 2; }
+  .privacy-note { position: relative; left: auto; bottom: auto; margin: 8px 0 0; }
   .workspace { order: 1; }
   .upload-grid, .interview-layout { grid-template-columns: 1fr; }
   .autobiography-cover { width: calc(100% - 32px); }
