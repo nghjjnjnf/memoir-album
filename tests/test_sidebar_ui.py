@@ -80,3 +80,7 @@ def test_book_page_hides_internal_review_metrics():
     assert "padding: 12px clamp(22px, 4vw, 36px);" in styles
     assert ".autobiography-opening .autobiography-portrait" in styles
     assert ".autobiography-opening .autobiography-preface" in styles
+    assert 'id="bookCoverPhoto"' in html
+    assert 'coverPhoto.src = coverVisual.media_url;' in script
+    assert ".autobiography-cover-photo" in styles
+    assert "#bookEditionScope" in styles

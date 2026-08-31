@@ -920,6 +920,17 @@ function renderBookEdition(edition, shouldScroll = true) {
   $("bookEditionKicker").textContent = `第 ${edition.edition_number} 版 · 第三人称个人自传`;
   $("bookEditionTitle").textContent = edition.title;
   $("bookEditionSubtitle").textContent = edition.subtitle || "一部随着照片不断生长的人生作品";
+  const coverVisual = (manuscript.sections || [])
+    .flatMap((section) => (section.photos || []).map((photo) => ({ ...photo, sectionTitle: section.title })))
+    .find((photo) => photo.media_url);
+  const coverPhoto = $("bookCoverPhoto");
+  coverPhoto.classList.toggle("hidden", !coverVisual);
+  if (coverVisual) {
+    coverPhoto.src = coverVisual.media_url;
+    coverPhoto.alt = coverVisual.note || `${coverVisual.sectionTitle}中的人生照片`;
+  } else {
+    coverPhoto.removeAttribute("src");
+  }
   const passed = Boolean(edition.review?.passed);
   $("bookEditionStatus").textContent = edition.status === "confirmed"
     ? "已确认"

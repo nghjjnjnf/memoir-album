@@ -661,18 +661,64 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   margin: 24px auto 28px;
   padding: 52px 36px 44px;
   color: #2f3b35;
-  background: #f4f6f2;
-  border: 1px solid var(--line);
+  background: linear-gradient(145deg, #ffffff 0%, #f3f7f3 58%, #edf2ed 100%);
+  border: 1px solid #cbd5ce;
   border-radius: 15px;
+  box-shadow: 0 18px 44px rgba(40, 55, 47, .12), 0 2px 8px rgba(40, 55, 47, .06);
 }
-.autobiography-cover::before, .autobiography-cover::after { display: none; }
+.autobiography-cover::before { display: none; }
+.autobiography-cover::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: auto;
+  height: auto;
+  display: block;
+  background: linear-gradient(90deg, rgba(249, 251, 248, .96) 0%, rgba(249, 251, 248, .84) 55%, rgba(249, 251, 248, .68) 100%);
+  border: 0;
+  border-radius: inherit;
+}
+.autobiography-cover-photo {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(.16) saturate(.62) contrast(.92);
+}
+.autobiography-cover > :not(.autobiography-cover-photo) { position: relative; z-index: 2; }
+.autobiography-cover .eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
 .autobiography-cover h2 {
   color: #2d3932;
   font-family: var(--font-reading);
   font-size: clamp(34px, 3.4vw, 48px);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: .03em;
   white-space: nowrap;
+}
+.autobiography-cover .autobiography-subtitle { color: #59645d; font-weight: 550; }
+.autobiography-cover-meta { margin-top: 28px; gap: 10px; }
+#bookEditionStatus {
+  color: #40584b;
+  background: rgba(255, 255, 255, .82);
+  border-color: #aebfb4;
+}
+#bookEditionScope {
+  color: #fff;
+  background: #466657;
+  border-color: #466657;
+  box-shadow: 0 5px 14px rgba(56, 83, 69, .2);
+}
+#bookEditionPanel {
+  background: linear-gradient(155deg, #ffffff 0%, #fbfcfa 56%, #f1f5f1 100%);
+  border-color: #d5ddd7;
+  box-shadow: 0 18px 52px rgba(33, 46, 39, .08);
 }
 .autobiography-opening {
   display: grid;
@@ -681,8 +727,9 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   margin: 28px auto;
   overflow: hidden;
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1px solid #d8e0da;
   border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(40, 55, 47, .07);
 }
 .autobiography-opening .autobiography-portrait,
 .autobiography-opening .autobiography-preface {
@@ -704,10 +751,21 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   background: #fff;
   border-top: 1px solid #e1e7e2;
 }
-.autobiography-afterword { background: #fafaf8; border-color: var(--line); }
-.autobiography-section { border-color: var(--line); border-radius: 10px; box-shadow: none; }
+.autobiography-afterword { max-width: 920px; background: #fff; border-color: #d8e0da; box-shadow: 0 10px 28px rgba(40, 55, 47, .06); }
+.autobiography-section { border-color: #d8e0da; border-radius: 12px; box-shadow: 0 12px 32px rgba(40, 55, 47, .075); }
 .autobiography-photo { border-color: var(--line); box-shadow: 0 4px 14px rgba(32, 44, 37, .07); }
 .autobiography-insight { background: #f3f6f2; border-left-color: #869c8c; }
+.book-arc { max-width: 920px; margin: 24px auto 0; }
+.book-threads { max-width: 920px; margin: 18px auto 34px; gap: 10px; }
+.thread-chip {
+  padding: 7px 13px;
+  color: #42594d;
+  background: #f2f6f3;
+  border: 1px solid #cdd9d0;
+  box-shadow: 0 3px 9px rgba(44, 65, 53, .05);
+  font-weight: 650;
+}
+#bookEditionPanel > .button-row { max-width: 920px; margin-right: auto; margin-left: auto; }
 
 .project-create-dialog {
   width: min(480px, calc(100vw - 32px));
