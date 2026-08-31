@@ -6,7 +6,7 @@
   <title>岁影-Memoir Album · 人生故事</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23788f7b'/%3E%3Cpath d='M17 19h30v26H17zM22 35l7-8 6 7 4-4 4 5' fill='none' stroke='%23fffaf0' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css?v=20260826-living-autobiography-1">
-  <link rel="stylesheet" href="/static/minimal.css?v=20260831-app-shell-1">
+  <link rel="stylesheet" href="/static/minimal.css?v=20260831-project-settings-1">
 </head>
 <body>
   <div class="page-decoration decoration-one" aria-hidden="true"></div>
@@ -70,26 +70,6 @@
       </div>
 
       <div id="projectWorkspace" class="hidden">
-        <section class="project-head card">
-          <div>
-            <p class="eyebrow">正在编辑</p>
-            <h2 id="activeProjectTitle"></h2>
-          </div>
-          <div class="project-actions">
-            <label class="inline-field">全书人称
-              <select id="activePersonSelect">
-                <option value="first">第一人称</option>
-                <option value="third">第三人称</option>
-              </select>
-            </label>
-            <div class="button-row tight">
-              <button id="weaveBookButton" class="secondary small" type="button">生成完整自传</button>
-              <button id="exportButton" class="secondary small" type="button">导出数据</button>
-              <button id="deleteProjectButton" class="danger-button small" type="button">删除项目</button>
-            </div>
-          </div>
-        </section>
-
         <nav id="workspacePageNav" class="workspace-page-nav project-local-nav hidden" aria-label="当前项目内容">
           <button class="workspace-page-tab active" type="button" data-workspace-view="story">
             <span>01</span><strong>照片</strong><small>采集和整理人生记忆</small>
@@ -312,6 +292,32 @@
     </section>
   </main>
 
+  <dialog id="projectSettingsDialog" class="project-settings-dialog" aria-labelledby="activeProjectTitle">
+    <section class="project-settings-card">
+      <header class="project-settings-header">
+        <div>
+          <p class="eyebrow">项目设置</p>
+          <h2 id="activeProjectTitle"></h2>
+        </div>
+        <button id="closeProjectSettings" class="dialog-close-button" type="button" aria-label="关闭项目设置">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <p class="project-settings-intro">调整整本自传的叙述方式，或管理当前项目。</p>
+      <label class="project-settings-field" for="activePersonSelect">全书人称
+        <select id="activePersonSelect">
+          <option value="first">第一人称</option>
+          <option value="third">第三人称</option>
+        </select>
+      </label>
+      <div class="project-settings-actions">
+        <button id="weaveBookButton" class="primary" type="button">生成完整自传</button>
+        <button id="exportButton" class="secondary" type="button">导出数据</button>
+        <button id="deleteProjectButton" class="danger-button" type="button">删除项目</button>
+      </div>
+    </section>
+  </dialog>
+
   <dialog id="projectCreateDialog" class="project-create-dialog" aria-labelledby="projectCreateTitle">
     <form id="projectForm" class="project-create-card">
       <header class="project-create-header">
@@ -379,6 +385,6 @@
   </dialog>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/static/app.js?v=20260831-app-shell-1" defer></script>
+  <script src="/static/app.js?v=20260831-project-settings-1" defer></script>
 </body>
 </html>

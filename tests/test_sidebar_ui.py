@@ -16,11 +16,14 @@ def test_chat_style_project_sidebar_structure():
     assert "sidebar-create-panel" not in html
     assert 'button.append(title);' in script
     assert 'button.append(title, meta);' not in script
+    assert 'className = "project-settings-button"' in script
+    assert 'openProjectSettings(project.id)' in script
     assert '$("newProjectButton").addEventListener("click"' in script
     assert ".layout {\n  width: 100%;\n  margin: 0;" in styles
     assert "dialog.showModal()" in script
     assert ".project-create-dialog::backdrop" in styles
-    assert ".privacy-note {\n  margin-top: auto;" in styles
+    assert ".privacy-note {\n  margin-top: 8px;" in styles
+    assert "min-height: 0;\n  max-height: none;" in styles
     assert 'class="privacy-note-icon"' in html
     assert 'role="tooltip"' in html
     assert ".project-item.active::before { display: block; }" in styles
@@ -32,11 +35,15 @@ def test_workspace_tabs_belong_to_selected_project():
     html = (STATIC / "index.html").read_text(encoding="utf-8")
 
     project_workspace = html.index('id="projectWorkspace"')
-    project_heading = html.index('id="activeProjectTitle"')
     project_navigation = html.index('id="workspacePageNav"')
     first_project_page = html.index('data-workspace-page="story"')
+    main_end = html.index("</main>")
+    settings_dialog = html.index('id="projectSettingsDialog"')
+    project_heading = html.index('id="activeProjectTitle"')
 
-    assert project_workspace < project_heading < project_navigation < first_project_page
+    assert project_workspace < project_navigation < first_project_page < main_end
+    assert main_end < settings_dialog < project_heading
+    assert 'class="project-head card"' not in html
     assert 'aria-label="当前项目内容"' in html
 
 

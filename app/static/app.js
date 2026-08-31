@@ -231,14 +231,34 @@ function renderProjectList() {
   list.className = "item-list";
   list.innerHTML = "";
   state.projects.forEach((project) => {
+    const row = document.createElement("div");
+    row.className = "project-item-row";
     const button = document.createElement("button");
     button.className = `project-item ${state.project?.id === project.id ? "active" : ""}`;
+    button.type = "button";
     const title = document.createElement("strong");
     title.textContent = projectDisplayTitle(project);
     button.append(title);
     button.addEventListener("click", () => selectProject(project.id));
-    list.appendChild(button);
+    const settingsButton = document.createElement("button");
+    settingsButton.className = "project-settings-button";
+    settingsButton.type = "button";
+    settingsButton.setAttribute("aria-label", `设置${projectDisplayTitle(project)}`);
+    settingsButton.title = "项目设置";
+    settingsButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"></path><path d="M19 13.3v-2.6l-2-.6a7 7 0 0 0-.6-1.4l1-1.9-1.9-1.9-1.9 1a7 7 0 0 0-1.4-.6l-.6-2H9l-.6 2a7 7 0 0 0-1.4.6l-1.9-1-1.9 1.9 1 1.9a7 7 0 0 0-.6 1.4l-2 .6v2.6l2 .6a7 7 0 0 0 .6 1.4l-1 1.9 1.9 1.9 1.9-1a7 7 0 0 0 1.4.6l.6 2h2.6l.6-2a7 7 0 0 0 1.4-.6l1.9 1 1.9-1.9-1-1.9a7 7 0 0 0 .6-1.4l2-.6Z"></path></svg>';
+    settingsButton.addEventListener("click", () => openProjectSettings(project.id));
+    row.append(button, settingsButton);
+    list.appendChild(row);
   });
+}
+
+async function openProjectSettings(projectId) {
+  try {
+    if (state.project?.id !== projectId) await selectProject(projectId);
+    $("projectSettingsDialog").showModal();
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 
 async function selectProject(projectId) {
@@ -1046,6 +1066,10 @@ $("projectCreateDialog").addEventListener("click", (event) => {
 
 $("closeProjectCreateDialog").addEventListener("click", () => $("projectCreateDialog").close());
 $("cancelProjectCreate").addEventListener("click", () => $("projectCreateDialog").close());
+$("closeProjectSettings").addEventListener("click", () => $("projectSettingsDialog").close());
+$("projectSettingsDialog").addEventListener("click", (event) => {
+  if (event.target === $("projectSettingsDialog")) $("projectSettingsDialog").close();
+});
 
 $("activePersonSelect").addEventListener("change", async (event) => {
   try {
@@ -1247,6 +1271,7 @@ $("shareButton").addEventListener("click", async (event) => {
 
 $("weaveBookButton").addEventListener("click", async (event) => {
   setBusy(event.currentTarget, true, "正在把照片故事写成一本书…");
+  if ($("projectSettingsDialog").open) $("projectSettingsDialog").close();
   try {
     const edition = await api(`/api/projects/${state.project.id}/autobiography/compile`, { method: "POST" });
     renderBookEdition(edition);
@@ -1288,6 +1313,7 @@ $("deleteProjectButton").addEventListener("click", async () => {
   if (!accepted) return;
   try {
     await api(`/api/projects/${state.project.id}`, { method: "DELETE" });
+    if ($("projectSettingsDialog").open) $("projectSettingsDialog").close();
     state.project = null;
     state.session = null;
     state.chapter = null;
