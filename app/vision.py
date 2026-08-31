@@ -225,6 +225,16 @@ def photo_observation(photo_id: str) -> dict[str, Any] | None:
     return row
 
 
+# 常见城市名：城市名不以“市/县/公园”等后缀结尾，后缀规则识别不到，需要显式收录。
+CITY_NAMES = (
+    "北京", "上海", "天津", "重庆", "广州", "深圳", "杭州", "南京", "成都", "武汉",
+    "西安", "苏州", "青岛", "大连", "厦门", "长沙", "郑州", "济南", "合肥", "福州",
+    "昆明", "贵阳", "南昌", "太原", "石家庄", "哈尔滨", "沈阳", "长春", "兰州", "南宁",
+    "海口", "无锡", "宁波", "温州", "珠海", "三亚", "桂林", "丽江", "拉萨", "呼和浩特",
+    "乌鲁木齐", "银川", "西宁", "台北", "高雄", "香港", "澳门", "延安", "井冈山", "遵义",
+)
+
+
 def user_context_slots(user_title: str = "", note: str = "") -> dict[str, str]:
     """从用户主动填写的标题/说明中保守识别已知时间和地点，避免首问重复。"""
     context = "；".join(part.strip() for part in (user_title, note) if str(part or "").strip())
@@ -250,6 +260,13 @@ def user_context_slots(user_title: str = "", note: str = "") -> dict[str, str]:
         if candidate and "的" not in candidate and candidate not in generic_places and 2 <= len(candidate) <= 20:
             place = candidate
             break
+    if not place:
+        # 后缀规则覆盖不到的城市名（上海、杭州、成都…）显式扫描；
+        # 地名互斥，命中城市名即可与视觉地点猜测直接比较。
+        for city in CITY_NAMES:
+            if city in compact:
+                place = city
+                break
     return {
         "context": context[:100],
         "time": time_match.group(1) if time_match else "",
@@ -294,6 +311,14 @@ def opening_from_observation(
             f"原来这是{known_time}留下的一张照片呀。照片把那时的一刻留住了，可真正有意思的，还是当时的人和事。"
             f"{question}"
         )
+    if context:
+        # 用户已经主动给过标题/说明：结构化地点没解析出来也不允许拿视觉猜测
+        # 反问地点，否则会出现“用户写了上海却问是不是巴黎”的矛盾首问。
+        if isinstance(count, int) and count > 1:
+            question = "照片里和您一起的人，分别是谁呀？"
+        else:
+            question = "那天发生了什么，让这张照片一直留到了现在呢？"
+        return f"原来这张照片留住的是“{context}”呀。能听您讲讲它背后的故事就更好了。{question}"
 
     if not observation or observation.get("status") != "ready":
         return "我们就从这张照片慢慢说起。您愿意先讲讲，它大约是什么时候、在哪里拍的吗？"

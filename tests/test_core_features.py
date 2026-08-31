@@ -29,7 +29,7 @@ from app.evidence_arbitration import (
     entity_place_conflicts,
 )
 from app.main import app
-from app.vision import opening_from_observation
+from app.vision import opening_from_observation, user_context_slots
 
 
 PNG_BYTES = (
@@ -205,6 +205,27 @@ def test_context_compression_triggers_at_token_boundary_without_deleting_turns()
         object.__setattr__(settings, "context_compression_trigger_tokens", original_trigger)
         object.__setattr__(settings, "context_compression_target_tokens", original_target)
         object.__setattr__(settings, "context_recent_turns", original_recent)
+
+
+def test_user_title_place_suppresses_visual_place_guess() -> None:
+    paris_observation = {
+        "status": "ready",
+        "observations": {
+            "place_clues": [{"value": "巴黎", "basis": "背景中可见埃菲尔铁塔", "confidence": "high"}],
+            "objects": ["埃菲尔铁塔"],
+        },
+    }
+    opening = opening_from_observation(paris_observation, "参观上海", "")
+    assert "上海" in opening
+    assert "巴黎" not in opening
+    assert "在哪里拍的" not in opening
+
+    slots = user_context_slots("参观上海", "")
+    assert slots["place"] == "上海"
+
+    vague_opening = opening_from_observation(paris_observation, "第一次去旅行", "")
+    assert "巴黎" not in vague_opening
+    assert "第一次去旅行" in vague_opening
 
 
 def test_vision_opening_labels_image_information_as_unconfirmed_candidates() -> None:
