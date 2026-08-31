@@ -580,7 +580,11 @@ function updatePhotoDeleteChoice() {
   dialog.querySelectorAll(".delete-choice").forEach((label) => {
     label.classList.toggle("selected", label.querySelector("input").checked);
   });
-  $("confirmPhotoDelete").textContent = selected === "asset_only" ? "只删除照片" : "照片和故事一起删除";
+  const confirmButton = $("confirmPhotoDelete");
+  const destructive = selected === "asset_and_story";
+  confirmButton.textContent = destructive ? "确认删除照片与故事" : "确认移除照片";
+  confirmButton.classList.toggle("danger-action", destructive);
+  confirmButton.setAttribute("aria-label", destructive ? "确认删除照片和相关故事" : "确认移除照片并保留故事");
 }
 
 async function editTimelineEvent(event) {

@@ -6,7 +6,7 @@
   <title>岁影-Memoir Album · 人生故事</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='12' y='6' width='40' height='52' rx='7' fill='%23f8f7f2' stroke='%234a5d4e' stroke-width='3'/%3E%3Cpath d='M20 8v48M28 20h16' stroke='%2393a49a' stroke-width='2'/%3E%3Ctext x='37' y='39' text-anchor='middle' fill='%23314238' font-family='Georgia,serif' font-size='14' font-weight='700'%3ESY%3C/text%3E%3Ccircle cx='43' cy='49' r='2' fill='%23b29462'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css?v=20260826-living-autobiography-1">
-  <link rel="stylesheet" href="/static/minimal.css?v=20260831-send-ring-spinner-1">
+  <link rel="stylesheet" href="/static/minimal.css?v=20260831-welcome-no-icon-1">
 </head>
 <body>
   <div class="page-decoration decoration-one" aria-hidden="true"></div>
@@ -14,14 +14,7 @@
   <header class="topbar">
     <div class="brand-block">
       <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 36 44" role="img">
-          <rect class="brand-book-cover" x="5" y="3" width="26" height="38" rx="4"></rect>
-          <path class="brand-book-spine" d="M10 4v36"></path>
-          <path class="brand-book-rule" d="M15 12h11"></path>
-          <text class="brand-monogram" x="20.5" y="27" text-anchor="middle">SY</text>
-          <text class="brand-volume" x="20.5" y="34" text-anchor="middle">VOL.1</text>
-          <circle class="brand-time-dot" cx="26" cy="8" r="1.4"></circle>
-        </svg>
+        <img src="/static/assets/memoir-writer-line-icon.png" alt="">
       </span>
       <h1><span>岁影</span><i>-</i><small>Memoir Album</small></h1>
     </div>
@@ -58,15 +51,13 @@
 
     <section class="workspace">
       <div id="welcome" class="welcome card">
-        <div class="welcome-illustration" aria-hidden="true">
-          <span class="book-page page-left"></span>
-          <span class="book-page page-right"></span>
-          <span class="book-heart">♥</span>
-          <span class="book-spark">✦</span>
-        </div>
         <h2>先创建或选择一本自传</h2>
         <p>之后上传一张照片，用文字讲述它背后的故事。系统会温和追问，再整理成一章。</p>
-        <div class="welcome-promise"><span>照片</span><i></i><span>故事</span><i></i><span>成书</span></div>
+        <ol class="welcome-flow" aria-label="从照片到自传的三个步骤">
+          <li><span>01</span><strong>照片</strong><small>唤起一段记忆</small></li>
+          <li><span>02</span><strong>故事</strong><small>在对话中展开</small></li>
+          <li><span>03</span><strong>成书</strong><small>汇入人生叙事</small></li>
+        </ol>
       </div>
 
       <div id="projectWorkspace" class="hidden">
@@ -365,19 +356,19 @@
   <dialog id="photoDeleteDialog" class="choice-dialog" aria-labelledby="photoDeleteTitle">
     <form id="photoDeleteForm" class="choice-dialog-card">
       <p class="eyebrow">删除照片</p>
-      <h2 id="photoDeleteTitle">这张照片要怎样处理？</h2>
-      <p class="choice-dialog-intro">默认只删除照片文件，已经聊过的回忆、章节和完整自传都会保留。</p>
+      <h2 id="photoDeleteTitle">选择删除范围</h2>
+      <p class="choice-dialog-intro">请选择删除范围；故事内容默认保留。</p>
       <label class="delete-choice selected">
         <input type="radio" name="photoDeleteMode" value="asset_only" checked>
-        <span><strong>只删除照片</strong><small>推荐选择。故事文字、访谈记忆与自传版本保持不变。</small></span>
+        <span><strong>仅移除照片文件</strong><small>访谈、事实、章节和自传版本都会保留。</small></span>
       </label>
       <label class="delete-choice danger-choice">
         <input type="radio" name="photoDeleteMode" value="asset_and_story">
-        <span><strong>照片和相关故事一起删除</strong><small>相关独立章节与由它生成的整书版本也会删除，且无法恢复。</small></span>
+        <span><strong>删除照片与相关故事</strong><small>相关章节和由它生成的自传版本也会删除，无法恢复。</small></span>
       </label>
       <div class="button-row dialog-actions">
-        <button id="cancelPhotoDelete" class="secondary" type="button">先不删除</button>
-        <button id="confirmPhotoDelete" class="danger-button" type="submit">只删除照片</button>
+        <button id="cancelPhotoDelete" class="secondary" type="button">取消</button>
+        <button id="confirmPhotoDelete" class="secondary delete-submit-button" type="submit">确认移除照片</button>
       </div>
     </form>
   </dialog>

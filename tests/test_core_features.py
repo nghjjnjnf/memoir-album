@@ -13,6 +13,8 @@ from app.agents import (
     _chapter_target_length,
     _interview_reply_length_guidance,
     enforce_grounding_review,
+    build_narrative_plan,
+    literary_detail_gate,
     interview_priority_question,
     literary_quality_gate,
     next_interview_turn,
@@ -20,6 +22,8 @@ from app.agents import (
     previous_reply_openings,
     reply_opening,
     reply_opening_repeats,
+    _redundant_interview_question,
+    _interview_reply_quality_issues,
 )
 from app.db import execute, fetch_all
 from app.evidence_arbitration import (
@@ -29,6 +33,7 @@ from app.evidence_arbitration import (
     entity_place_conflicts,
 )
 from app.main import app
+from app.orchestrator import _apply_explicit_revision_constraints, _revision_constraints
 from app.vision import opening_from_observation, user_context_slots
 
 
@@ -328,6 +333,39 @@ def test_interview_length_guidance_does_not_add_story_content() -> None:
     assert "照片" not in guidance["principle"]
 
 
+def test_interview_does_not_reask_known_location_and_flags_flat_sightseeing_reply() -> None:
+    turns = [{"role": "user", "content": "去年国庆和两位同事去了上海，参观了外滩然后拍了合照。"}]
+    assert _redundant_interview_question("这张合照是在外滩拍的吗？", turns) is True
+    assert _redundant_interview_question("和同事平时关系怎么样？", turns) is False
+    issues = _interview_reply_quality_issues("外滩的夜景确实很适合拍照留念。这张合照是在外滩拍的？")
+    assert any("泛化景点评价" in issue for issue in issues)
+
+
+def test_explicit_revision_constraint_removes_camera_shutter_sound() -> None:
+    content = "快门声响起时，我忽然注意到同事的手搭在我肩上。"
+    revised, changes = _apply_explicit_revision_constraints(
+        content,
+        "因为用手机拍照，所以这里不要写快门声。",
+    )
+    assert "快门声" not in revised
+    assert "我忽然注意到同事的手搭在我肩上" in revised
+    assert changes
+    for instruction in ("取消快门的描述", "去掉快门声", "请移除快门声"):
+        revised, _ = _apply_explicit_revision_constraints(content, instruction)
+        assert "快门声" not in revised
+
+
+def test_explicit_revision_constraints_are_not_hardcoded_to_camera_terms() -> None:
+    parsed = _revision_constraints("取消关于‘灰蒙蒙的轮廓线’的描述")
+    assert parsed["remove_terms"] == ["灰蒙蒙的轮廓线"]
+    revised, changes = _apply_explicit_revision_constraints(
+        "对岸灰蒙蒙的轮廓线在暮色里发虚。江风还在吹。",
+        "取消关于‘灰蒙蒙的轮廓线’的描述",
+    )
+    assert "灰蒙蒙的轮廓线" not in revised
+    assert changes
+
+
 def test_previous_reply_openings_collects_recent_unique_assistant_openers() -> None:
     turns = [
         {"role": "assistant", "content": "原来是在上海外滩拍的呀，那背景看着确实有点像巴黎。"},
@@ -552,6 +590,22 @@ def test_literary_quality_gate_passes_structured_chapter() -> None:
         ]
     )
     assert literary_quality_gate(chapter * 4, 500) == []
+
+
+def test_literary_detail_gate_flags_repeated_visual_action_but_allows_meaningful_callback() -> None:
+    repeated = "我站在栏杆边比了个V。后来我又比了个V。"
+    assert any("V手势" in issue for issue in literary_detail_gate(repeated))
+    callback = "我站在栏杆边比了个V。如今再看，那只是照片留下的一点靠近。"
+    assert literary_detail_gate(callback) == []
+
+
+def test_narrative_plan_marks_literary_inference_and_detail_budget() -> None:
+    plan = build_narrative_plan(
+        [{"value": "我左手比了个V", "fact_type": "event"}],
+        [{"role": "user", "content": "我左手比了个V，后来再看这张照片很有意义。"}],
+    )
+    assert plan["detail_rules"][0]["max_full_descriptions"] == 1
+    assert plan["inference_policy"]["must_be_marked_as_subjective"] is True
 
 
 def test_generated_chapter_records_literary_quality_review() -> None:

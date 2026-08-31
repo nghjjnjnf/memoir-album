@@ -50,20 +50,35 @@ def test_workspace_tabs_belong_to_selected_project():
     assert 'aria-label="当前项目内容"' in html
 
 
-def test_brand_aligns_with_sidebar_and_has_memoir_album_icon():
+def test_brand_aligns_with_sidebar_and_has_writer_line_icon():
     html = (STATIC / "index.html").read_text(encoding="utf-8")
     styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
 
     assert 'class="brand-mark"' in html
-    assert 'class="brand-book-cover"' in html
-    assert 'class="brand-book-spine"' in html
-    assert 'class="brand-monogram"' in html
-    assert ">SY</text>" in html
+    assert 'src="/static/assets/memoir-writer-line-icon.png"' in html
+    assert (STATIC / "assets" / "memoir-writer-line-icon.png").is_file()
+    assert ".brand-mark img {" in styles
+    assert "brand-book-cover" not in html
     assert "brand-memory-head" not in html
     assert "岁影" in html and "Memoir Album" in html
     assert "padding: 11px 28px;" in styles
     assert ".brand-block {\n  grid-column: 1;" in styles
     assert ".status-pill {\n  grid-column: 2;" in styles
+
+
+def test_welcome_uses_editorial_flow_without_decorative_book():
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
+
+    assert 'class="welcome-flow"' in html
+    assert "唤起一段记忆" in html
+    assert "在对话中展开" in html
+    assert "汇入人生叙事" in html
+    assert "book-heart" not in html
+    assert "book-spark" not in html
+    assert "welcome-book-cover" not in html
+    assert "welcome-illustration" not in html
+    assert ".welcome-flow li:hover" in styles
 
 
 def test_interview_composer_supports_voice_arrow_and_optimistic_message():

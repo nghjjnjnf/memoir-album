@@ -119,7 +119,83 @@ CHAPTER_HARD_RISK_MARKERS = (
     "住在", "记不清", "队伍", "游客", "等待", "盯着", "灯光", "街头",
     "天又冷", "天气很冷", "天气冷", "拍了不少", "好几张照片",
 )
+LITERARY_INFERENCE_CUES = (
+    "仿佛", "像是", "好像", "也许", "或许", "后来再看", "多年以后",
+    "如今再看", "我才意识到", "现在想来", "对我来说", "在我看来",
+    "那一刻对我而言", "成了", "留在了",
+)
+_REPEATED_DETAIL_PATTERNS = {
+    "V手势": re.compile(r"(?:比着|比了个|比出|打着|做着)\s*[Vv](?:字手势|手势)?"),
+    "站在中间": re.compile(r"站在(?:了)?中间"),
+    "手搭在肩上": re.compile(r"手(?:搭|放|搁)在(?:了)?(?:我|他|她)?肩上"),
+}
 _REPLY_OPENING_STRIP = re.compile(r"^[\s，。！？、；：…—“”\"'!?.,;:~～·（）()【】\[\]]+")
+
+
+def _is_explicit_literary_inference(
+    sentence: str,
+    literary_inferences: list[str] | None = None,
+) -> bool:
+    """允许有标记的主观回望/象征，但不放行伪装成事实的具体事件。"""
+    text = str(sentence or "").strip()
+    if not text or "“" in text or '"' in text:
+        return False
+    if any(cue in text for cue in LITERARY_INFERENCE_CUES):
+        return True
+    normalized = re.sub(r"\s+", "", text)
+    return any(normalized == re.sub(r"\s+", "", str(item)) for item in (literary_inferences or []))
+
+
+def literary_detail_gate(content: str) -> list[str]:
+    """检测客观可识别的重复动作/细节；不限制有意义的主题回响。"""
+    body = str(content or "")
+    issues: list[str] = []
+    for label, pattern in _REPEATED_DETAIL_PATTERNS.items():
+        count = len(pattern.findall(body))
+        if count > 1:
+            issues.append(f"同一细节“{label}”完整出现{count}次，建议保留一次并将后文改为意义回望")
+    normalized_sentences = [re.sub(r"\s+", "", item) for item in _sentences(body)]
+    repeated = sorted({item for item in normalized_sentences if item and normalized_sentences.count(item) > 1})
+    if repeated:
+        issues.append("存在完全重复的句子，影响叙事节奏")
+    return issues
+
+
+def build_narrative_plan(
+    facts: list[dict[str, Any]],
+    turns: list[dict[str, Any]] | None = None,
+    visual_evidence: list[dict[str, Any]] | None = None,
+    instruction: str | None = None,
+) -> dict[str, Any]:
+    """建立轻量叙事约束，先控制细节用途，再把文学自由交给模型。"""
+    source_text = "\n".join(
+        [str(fact.get("value", "")) for fact in facts]
+        + [
+            str(turn.get("content", ""))
+            for turn in (turns or [])
+            if turn.get("role") == "user"
+        ]
+        + [str(item.get("text", "")) for item in (visual_evidence or [])]
+    )
+    detail_rules = []
+    for label, pattern in _REPEATED_DETAIL_PATTERNS.items():
+        if pattern.search(source_text):
+            detail_rules.append({
+                "detail": label,
+                "max_full_descriptions": 1,
+                "callback": "后文只能转为意义、关系或现在回望，不得机械重复动作描述",
+            })
+    return {
+        "purpose": "在事实可靠的前提下，把材料组织成有场景、有转折、有回望的文学章节",
+        "paragraph_roles": ["photo_opening", "scene", "context_bridge", "turning_point", "present_reflection"],
+        "detail_rules": detail_rules,
+        "inference_policy": {
+            "allowed": ["与证据一致的氛围", "主观感受的文学化表达", "比喻和象征", "现在回望"],
+            "must_be_marked_as_subjective": True,
+            "forbidden": ["新增人物姓名或关系", "新增外部事件或结果", "无来源直接引语", "把推断写成确定发生的事实"],
+        },
+        "revision_instruction": instruction or "",
+    }
 
 
 def reply_opening(text: str) -> str:
@@ -247,6 +323,54 @@ def _interview_reply_length_guidance(last_user_text: str) -> dict[str, int | str
     }
 
 
+def _known_location_in_user_text(text: str) -> bool:
+    compact = re.sub(r"\s+", "", str(text or ""))
+    return bool(re.search(r"(?:上海|外滩|交大|徐汇|学校|校园|车间|工厂|车站|站台|家里|老家|北京|南京|成都|杭州)", compact))
+
+
+def _redundant_interview_question(question: str, turns: list[dict[str, Any]]) -> bool:
+    """避免把用户刚刚已经说清的时间/地点重新问一遍。"""
+    q = re.sub(r"\s+", "", str(question or ""))
+    user_text = "\n".join(
+        str(turn.get("content", "")) for turn in turns if turn.get("role") == "user"
+    )
+    if not q or not user_text:
+        return False
+    if (
+        re.search(r"(?:哪里|哪个位置|在哪儿|在哪拍|什么地方)", q)
+        or re.search(r"(?:是不是|是.{0,8}拍|拍.{0,8}(?:吗|？))", q)
+    ) and _known_location_in_user_text(user_text):
+        return bool(re.search(r"(?:外滩|上海|交大|徐汇|校园|车间|工厂|车站|站台|老家)", user_text))
+    if re.search(r"(?:什么时候|哪一年|哪年|几几年)", q) and bool(
+        re.search(r"(?:去年|前年|今年|\d{4}年|国庆|春节|小时候|初三|大学毕业)", user_text)
+    ):
+        return True
+    return False
+
+
+def _replacement_interview_question(turns: list[dict[str, Any]]) -> str:
+    user_text = "\n".join(
+        str(turn.get("content", "")) for turn in turns if turn.get("role") == "user"
+    )
+    if any(word in user_text for word in ("临时", "刚好", "提议", "决定")):
+        return "这次出发很临时，最开始是谁先提议去上海的呢？"
+    if "同事" in user_text or "同学" in user_text or "朋友" in user_text:
+        return "和您一起去的这几位同伴，平时和您是怎样相处的呢？"
+    return "那天最让您记得的一个瞬间是什么呢？"
+
+
+def _interview_reply_quality_issues(reply: str) -> list[str]:
+    text = re.sub(r"\s+", "", str(reply or ""))
+    issues: list[str] = []
+    if len(text) < 24:
+        issues.append("回应过短，缺少具体承接")
+    if re.search(r"(?:很适合拍照|适合拍照留念|很标志的地方|夜景很美|风景很美)", text):
+        issues.append("使用泛化景点评价代替了对用户经历的回应")
+    if re.fullmatch(r"(?:这张照片|这张合照)?(?:是在|拍在|位于)?.{0,24}(?:吗|？)", text):
+        issues.append("回应接近地点核对，缺少情绪或关系承接")
+    return issues
+
+
 def normalize_interview_output(
     decision: dict[str, Any],
     turns: list[dict[str, Any]],
@@ -298,6 +422,8 @@ def normalize_interview_output(
         first_clause = re.split(r"[，,](?:或者|还是|或是)", first_clause, maxsplit=1)[0].strip()
         if first_clause:
             question = first_clause[:160].rstrip("。！!；;") + "？"
+        if _redundant_interview_question(question, turns):
+            question = _replacement_interview_question(turns)
 
     return {
         **decision,
@@ -568,7 +694,8 @@ async def next_interview_turn(
     # 与最近几轮重复（例如每轮都以“原来”开头）时，才触发 Reply Editor 重写。
     too_short = len(re.sub(r"\s+", "", normalized["reply"])) < 12
     opener_repeats = reply_opening_repeats(normalized["reply"], openings)
-    reply_needs_repair = too_short or opener_repeats
+    quality_issues = _interview_reply_quality_issues(normalized["reply"])
+    reply_needs_repair = too_short or opener_repeats or bool(quality_issues)
     if not settings.use_mock_llm and reply_needs_repair:
         editor_payload = {
             "project_id": project_id,
@@ -582,6 +709,7 @@ async def next_interview_turn(
             "editor_reason": (
                 "回应开头与最近几轮回复的开头词重复，请换一种自然的承接方式重新开始。"
                 if opener_repeats and not too_short
+                else "；".join(quality_issues) if quality_issues
                 else "安全门禁移除了部分内容，或回复没有形成完整的自然承接。"
             ),
             "forbidden_openings": openings,
@@ -603,6 +731,7 @@ async def next_interview_turn(
             if (
                 len(re.sub(r"\s+", "", normalized["reply"])) >= 12
                 and not reply_opening_repeats(normalized["reply"], openings)
+                and not _interview_reply_quality_issues(normalized["reply"])
             ):
                 break
             editor_payload["rejected_reply"] = normalized["reply"]
@@ -684,6 +813,7 @@ def enforce_grounding_review(
     turns: list[dict[str, Any]] | None = None,
     visual_evidence: list[dict[str, Any]] | None = None,
     forbidden_visual_terms: list[str] | None = None,
+    literary_inferences: list[str] | None = None,
 ) -> dict[str, Any]:
     """确定性门禁：具体外部细节需来自口述、事实或照片可见证据。
 
@@ -739,7 +869,7 @@ def enforce_grounding_review(
                 marker for marker in CHAPTER_HARD_RISK_MARKERS
                 if marker in sentence and marker not in evidence
             ]
-            if unsupported:
+            if unsupported and not _is_explicit_literary_inference(sentence, literary_inferences):
                 detected.extend(unsupported)
                 continue
             kept.append(sentence)
@@ -777,6 +907,7 @@ async def draft_chapter(
     conversation_summary: dict[str, Any] | None = None,
     context_control: dict[str, Any] | None = None,
     confirmed_places: list[str] | None = None,
+    narrative_plan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     fallback = _mock_chapter(person, facts)
     target_min, target_max = _chapter_target_length(turns)
@@ -806,6 +937,10 @@ async def draft_chapter(
         "writing_method_cards": method_cards,
         "visual_evidence": visual_evidence or [],
         "confirmed_places": confirmed_places or [],
+        "narrative_plan": narrative_plan or build_narrative_plan(facts, turns, visual_evidence, instruction),
+        "inference_policy": (narrative_plan or {}).get("inference_policy") or build_narrative_plan(
+            facts, turns, visual_evidence, instruction
+        ).get("inference_policy", {}),
         "literary_mode": "bold_warm",
         "revision_instruction": instruction,
         "previous_content": previous_content,
@@ -889,7 +1024,13 @@ async def review_chapter(
     )
     validated = _validated(result, ReviewAgentOutput, fallback_value)
     return enforce_grounding_review(
-        validated, content, facts, turns, visual_evidence, forbidden_visual_terms
+        validated,
+        content,
+        facts,
+        turns,
+        visual_evidence,
+        forbidden_visual_terms,
+        literary_inferences,
     )
 
 
@@ -958,6 +1099,7 @@ async def review_literary_quality(
     min_chars: int | None = None,
     narrative_person: str = "first",
     project_id: str | None = None,
+    narrative_plan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """文学性审查：按非虚构自传标准检查具象描写、结构、张力与克制收尾。"""
 
@@ -972,6 +1114,8 @@ async def review_literary_quality(
             "content": content,
             "min_chars": min_chars or 0,
             "narrative_person": narrative_person,
+            "narrative_plan": narrative_plan or {},
+            "inference_policy": (narrative_plan or {}).get("inference_policy", {}),
             "facts": [
                 {"fact_type": fact.get("fact_type"), "value": fact.get("value")}
                 for fact in (facts or [])

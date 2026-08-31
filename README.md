@@ -1,42 +1,75 @@
 # 岁影 · Memoir Album
 
-> 让每一张照片会讲故事，让每一个普通人都能拥有自己的自传。
+<div align="center">
+  <p><strong>让每一张照片会讲故事，让每一个普通人都能拥有自己的自传。</strong></p>
+  <p>
+    <a href="https://github.com/nghjjnjnf/memoir-album/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nghjjnjnf/memoir-album/actions/workflows/ci.yml/badge.svg"></a>
+    <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-4A5D4E?style=flat-square">
+    <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Agent%20Backend-4A5D4E?style=flat-square">
+    <img alt="68 tests" src="https://img.shields.io/badge/Regression-68%20tests-7A8E80?style=flat-square">
+  </p>
+</div>
 
-岁影是一个照片驱动的多模态自传 Agent Demo。用户上传照片并通过语音或文字讲述故事，系统在后台理解画面、进行陪伴式访谈、整理人物与人生事件，最终生成可持续生长的照片章节和第三人称个人自传。
+<p align="center">
+  <img src="docs/showcase/03-autobiography-cover.png" width="900" alt="岁影生成的第三人称完整自传封面">
+</p>
 
-![照片与人生时间线](outputs/github-demo-timeline.png)
+岁影是一个照片驱动的多模态自传 Agent Demo。用户只需要上传一张照片，再用语音或文字讲述记忆；系统会理解画面、自然追问、整理人物与事件，并将零散的照片故事持续编排成具有文学性、人物价值和前后呼应的个人自传。
 
-## 为什么做这个项目
+## 为什么需要它
 
-数字相册通常只保存图像与拍摄时间。多年以后，照片背后的人物关系、事件经过、当时的选择和感受很容易逐渐模糊；手动补充这些上下文又耗时、零散，并且很难进一步组织成完整作品。
+相册保存了画面，却很少保存照片背后的人物关系、事件经过和当时的感受。随着时间推移，这些上下文会逐渐模糊；逐张手动补写既麻烦，也很难形成一部连贯的作品。
 
-岁影把照片作为记忆入口，通过自然交谈逐步补全上下文，再把分散的个人记忆整理为可以阅读、修改、分享和持续更新的人生自传。
+岁影把照片变成进入记忆的入口：先让用户在聊天中说出故事，再由 Agent 将记忆整理为可以阅读、修改、分享，并随着新照片不断生长的个人自传。
 
-## 核心体验
+## 从一张照片，到一本自传
+
+### 01 · 人生时间线：照片乱序上传，人生仍按真实时间展开
+
+<p align="center">
+  <img src="docs/showcase/01-life-timeline.png" width="100%" alt="照片、人物和故事组成的人生时间线">
+</p>
+
+每张照片对应一个人生事件。后上传的早年照片可以自动排到时间线前方；新访谈提到的旧人物和旧事件，也会回填到相关章节，而不是被困在当前对话中。
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/showcase/02-chapter-reading.png" width="100%" alt="照片故事生成的文学章节">
+      <br><strong>02 · 照片成为文学章节</strong><br>
+      <sub>事实、人物、场景和情绪被组织成可阅读、可修改、可确认的独立章节。</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/showcase/04-cross-chapter-narrative.png" width="100%" alt="完整自传中的照片与跨章叙事">
+      <br><strong>03 · 章节汇入完整人生叙事</strong><br>
+      <sub>整书 Agent 重新理解人物关系、人生选择与叙事暗线，让不同照片自然衔接并前后呼应。</sub>
+    </td>
+  </tr>
+</table>
+
+## 核心能力
+
+| 能力 | 实现方式 | 用户价值 |
+|---|---|---|
+| 多模态照片理解 | Vision Agent 提取人物、场景、物件、OCR与时间地点候选 | 不从空白开始回忆 |
+| 陪伴式传记访谈 | 情绪承接、未解线索追踪、单问题追问 | 像聊天，而不是被审问或填表 |
+| Timeline Memory | 事件级记忆、人物别称统一、跨访谈回填与时间重排 | 新故事可以补充过去，而不会覆盖过去 |
+| 文学章节生成 | 事实约束、叙事价值提炼、文学质量门禁 | 照片不只是被描述，而是获得人生意义 |
+| Living Autobiography | 整书导演、跨章改写、事实链接与连续性审校 | 一张照片能成文，新照片加入后整本书继续生长 |
+| 可控版本与分享 | 候选稿仲裁、不可变版本、确认后发布 | 用户可以修改、拒绝，也不会污染真实记忆 |
 
 ```text
-上传照片 → 后台识图 → 温情访谈 → 事实与人物记忆
-    → 照片章节 → 候选修改与用户仲裁 → 人生时间线
-    → 整书导演 → 第三人称完整自传
+上传照片 → 后台识图 → 语音/文字访谈 → 人物与事件记忆
+    → 文学章节 → 时间线编排 → 整书导演 → 持续生长的个人自传
 ```
-
-- 照片理解：提取人物数量、场景、物件、OCR及时间地点候选；视觉猜测不会直接成为人生事实。
-- 自适应访谈：结合最新回答、未解线索和共享人生记忆，每轮只追问一个真正值得继续讲的问题。
-- 语音讲述：Edge/Chrome 可通过输入框旁的麦克风按钮完成中文实时转写；发送时先显示用户讲述，再等待 Agent 回复。
-- 事件级记忆：照片上传顺序不决定人生顺序，支持跨访谈回填、人物别称统一和时间线重排。
-- 文学章节：在硬事实约束下补足场景、节奏、照片意义和人生价值，而不是生成流水账。
-- 候选修改：新稿不会自动覆盖当前章节；用户可继续调整、放弃或采用。
-- 记忆隔离：文风修改不污染事实；明确事实更正采用 append-only 版本，旧事实可追溯。
-- 完整自传：整书 Agent 统一人物、暗线、章节衔接和前后呼应，生成持续生长的第三人称作品。
-- 私密分享：分享链接绑定具体已确认版本，后续改稿不会静默改变已经分享的内容。
-
-![支持语音输入的访谈框](outputs/github-demo-voice.png)
-
-![第三人称完整自传](outputs/github-demo-book.png)
 
 ### 修改不会偷偷覆盖原稿
 
-![候选稿与记忆更正](outputs/revision-candidate-panel.png)
+新稿首先作为候选版本保存；只有用户主动采用，才会成为当前章节。事实更正与文风调整分别处理，避免“把文章写漂亮”反向污染人物和事件记忆。
+
+<p align="center">
+  <img src="outputs/revision-candidate-panel.png" width="86%" alt="候选稿与记忆更正界面">
+</p>
 
 ## Multi-Agent 设计
 
@@ -123,7 +156,7 @@ python -m pytest -q
 python scripts/run_synthetic_e2e.py --provider mock
 ```
 
-当前有50项自动化测试，覆盖照片安全、访谈策略、语音输入界面、记忆抽取、时间解析、上下文压缩、章节生成、候选修改、事实追加更正、版本确认、分享绑定和整书编排。自动测试使用临时目录与 Mock 模型，不调用 DeepSeek。
+当前有68项自动化测试，覆盖照片安全、访谈策略、语音输入界面、记忆抽取、时间解析、上下文压缩、章节生成、候选修改、事实追加更正、版本确认、分享绑定和整书编排。自动测试使用临时目录与 Mock 模型，不调用 DeepSeek。
 
 `evals/fixtures/` 提供三张合成照片和配套口述，可用于无隐私风险的端到端演示。
 
@@ -139,7 +172,7 @@ app/
   static/             本地 Demo 前端
 knowledge/            写作方法 RAG 卡片
 evals/fixtures/       合成测试照片与口述
-tests/                50项自动化回归
+tests/                68项自动化回归
 docs/                 产品、记忆、RAG与实施文档
 ```
 

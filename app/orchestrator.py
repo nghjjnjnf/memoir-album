@@ -1305,6 +1305,10 @@ async def _apply_quality_gates(
     visual_evidence: list[dict[str, Any]],
     project_id: str,
     narrative_person: str,
+    turns: list[dict[str, Any]] | None = None,
+    literary_inferences: list[str] | None = None,
+    forbidden_visual_terms: list[str] | None = None,
+    narrative_plan: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """章节成稿后的三道质量闸门：常识（硬）、文学性（软）、确定性门禁（硬）。
 
@@ -1335,11 +1339,17 @@ async def _apply_quality_gates(
     if not settings.literary_quality_review_enabled:
         return corrected, review
     literary = await agents.review_literary_quality(
-        corrected, usable_facts, settings.min_chapter_chars, narrative_person, project_id
+        corrected,
+        usable_facts,
+        settings.min_chapter_chars,
+        narrative_person,
+        project_id,
+        narrative_plan,
     )
     literary_issues = [str(issue) for issue in literary.get("issues", [])]
-    if not settings.use_mock_llm:
-        literary_issues.extend(agents.literary_quality_gate(corrected, settings.min_chapter_chars))
+    # Mock 也执行确定性的长度、分段、空泛和重复检查，避免本地验收掩盖明显问题。
+    literary_issues.extend(agents.literary_quality_gate(corrected, settings.min_chapter_chars))
+    literary_issues.extend(agents.literary_detail_gate(corrected))
     if literary_issues:
         corrected = str(literary.get("corrected_content") or corrected).strip() or corrected
         review = {
@@ -1357,6 +1367,35 @@ async def _apply_quality_gates(
             "issues": literary_issues,
         },
     }
+
+    # 文学审校可能重写正文；重写后的最终文本必须再次经过事实和视觉证据复核。
+    final_review = agents.enforce_grounding_review(
+        {**review, "corrected_content": corrected},
+        corrected,
+        usable_facts,
+        turns,
+        visual_evidence,
+        forbidden_visual_terms,
+        literary_inferences,
+    )
+    final_content = str(final_review.get("corrected_content") or corrected).strip() or corrected
+    if final_content != corrected or not final_review.get("passed", True):
+        corrected = final_content
+        review = {
+            **review,
+            "passed": bool(review.get("passed", True)) and bool(final_review.get("passed", True)),
+            "issues": [
+                *(review.get("issues") or []),
+                *(issue for issue in final_review.get("issues", []) if issue not in (review.get("issues") or [])),
+            ],
+            "corrected_content": corrected,
+            "final_grounding_review": {
+                "passed": bool(final_review.get("passed", True)),
+                "issues": final_review.get("issues", []),
+            },
+        }
+    else:
+        review["final_grounding_review"] = {"passed": True, "issues": []}
     return corrected, review
 
 
@@ -1383,12 +1422,14 @@ async def generate_chapter(session_id: str) -> dict[str, Any]:
         session.get("photo_id"), places, years, user_texts
     )
     context_pack = await _prepare_session_context(session)
+    narrative_plan = agents.build_narrative_plan(usable_facts, session["turns"], visual_evidence)
     draft = await agents.draft_chapter(
         project["narrative_person"], session["turns"], usable_facts, method_cards, visual_evidence,
         model_turns=context_pack["model_turns"],
         conversation_summary=context_pack["conversation_summary"],
         context_control=context_pack["context_control"],
         confirmed_places=places,
+        narrative_plan=narrative_plan,
     )
     content = str(draft.get("content", "")).strip()
     if not content:
@@ -1420,6 +1461,10 @@ async def generate_chapter(session_id: str) -> dict[str, Any]:
         visual_evidence,
         project["id"],
         project["narrative_person"],
+        turns=session["turns"],
+        literary_inferences=draft.get("literary_inferences") or [],
+        forbidden_visual_terms=forbidden_terms,
+        narrative_plan=narrative_plan,
     )
     chapter_id, version_id, now = _id(), _id(), now_iso()
     title = str(draft.get("title") or "一张照片的故事").strip()[:100]
@@ -1433,6 +1478,7 @@ async def generate_chapter(session_id: str) -> dict[str, Any]:
         "visual_evidence": visual_evidence,
         "used_visual_ids": draft.get("used_visual_ids") or [],
         "literary_inferences": draft.get("literary_inferences") or [],
+        "narrative_plan": narrative_plan,
     }
     with connection() as conn:
         conn.execute(
@@ -2660,6 +2706,71 @@ _QUOTED_CORRECTION_PATTERN = re.compile(
 )
 
 
+def _revision_constraints(instruction: str) -> dict[str, Any]:
+    """从自然语言修改要求提取通用的删除/替换约束，不绑定具体词汇。"""
+    request = str(instruction or "")
+    compact = re.sub(r"\s+", "", request)
+    removal = r"(?:不要|别|不写|不应写|不出现|不要出现|去掉|去除|删除|删掉|移除|取消|不需要|不必|避免|删去|取消掉)"
+    terms: list[str] = []
+    # 明确引用的目标最可靠：不要写“某段话”、删除“某个细节”。
+    quoted_terms = re.findall(
+        rf"{removal}(?:关于|有关|涉及)?\s*[‘'“\"]([^’'”\"。，,；;：:]{1,40})[’'”\"]",
+        request,
+    )
+    terms.extend(quoted_terms)
+    # “取消 X 的描述/描写”“去掉 X 相关内容”等无引号表达。
+    descriptive_terms = re.findall(
+        rf"{removal}(?:关于|有关|涉及)?(?P<term>[^，。；;：:！!？?\s]{{1,24}}?)(?:的描述|的描写|相关描述|相关描写|相关内容|的内容|这段描写|这个细节)",
+        compact,
+    )
+    if not quoted_terms:
+        terms.extend(descriptive_terms)
+    # “不要写 X / 不要出现 X”是最短形式；遇到“这里不要写”先剥离语气词。
+    if not quoted_terms and not descriptive_terms:
+        terms.extend(re.findall(
+        rf"{removal}(?:写|出现|保留|加入)?(?:这里|这段|这处|这句|这一处)?(?P<term>[^，。；;：:！!？?\s]{{1,20}})",
+        compact,
+        ))
+    cleaned: list[str] = []
+    filler = ("这里", "这段", "这句", "这个", "关于", "有关", "涉及", "相关", "内容", "描述", "描写")
+    for term in terms:
+        value = str(term).strip("，。；;：:、的 ‘'“\"’”")
+        for prefix in filler:
+            if value.startswith(prefix) and len(value) > len(prefix):
+                value = value[len(prefix):]
+        if value and value not in cleaned and not re.fullmatch(r"(?:写|出现|保留|加入)", value):
+            cleaned.append(value)
+    return {
+        "remove_terms": cleaned,
+        "instruction": request,
+        "detected": bool(cleaned),
+    }
+
+
+def _apply_explicit_revision_constraints(content: str, instruction: str) -> tuple[str, list[str]]:
+    """执行通用的用户局部约束；LLM 负责重写，确定性层负责兜底。"""
+    text = str(content or "")
+    constraints = _revision_constraints(instruction)
+    changes: list[str] = []
+    for term in constraints["remove_terms"]:
+        if term not in text:
+            continue
+        before = text
+        # 删除目标及其常见的“响起/出现/描述时”外壳，尽量保留句子其余信息。
+        term_pattern = re.compile(
+            rf"{re.escape(term)}(?:响起|一响|传来|出现|发生)?(?:时|的一刻|的声音|的描述|的描写)?[，,]?"
+        )
+        text = term_pattern.sub("", text)
+        if term in text:
+            text = text.replace(term, "")
+        text = re.sub(r"[，,、]{2,}", "，", text)
+        text = re.sub(r"\s{2,}", " ", text)
+        text = re.sub(r"([。！？!?])\1+", r"\1", text)
+        if text != before:
+            changes.append(f"执行删除约束：{term}")
+    return text.strip(), changes
+
+
 def _memory_correction_plan(
     instruction: str,
     facts: list[dict[str, Any]],
@@ -2778,6 +2889,8 @@ async def revise_chapter(
         "conversation_summary": {},
         "context_control": {},
     }
+    narrative_plan = agents.build_narrative_plan(draft_facts, session.get("turns", []), visual_evidence, instruction)
+    narrative_plan["explicit_revision_constraints"] = _revision_constraints(instruction)
     draft = await agents.draft_chapter(
         project["narrative_person"],
         session["turns"],
@@ -2790,8 +2903,10 @@ async def revise_chapter(
         conversation_summary=context_pack["conversation_summary"],
         context_control=context_pack["context_control"],
         confirmed_places=places,
+        narrative_plan=narrative_plan,
     )
     content = str(draft.get("content") or current["content"]).strip()
+    content, explicit_changes = _apply_explicit_revision_constraints(content, instruction)
     for conflict in entity_place_conflicts(draft.get("entities") or [], places):
         if conflict not in forbidden_terms:
             forbidden_terms.append(conflict)
@@ -2816,7 +2931,20 @@ async def revise_chapter(
         visual_evidence,
         project["id"],
         project["narrative_person"],
+        turns=session.get("turns", []),
+        literary_inferences=draft.get("literary_inferences") or [],
+        forbidden_visual_terms=forbidden_terms,
+        narrative_plan=narrative_plan,
     )
+    # 文学审校可能返回整篇改写，再执行一次用户的明确约束，确保“不要写 X”不会被改回。
+    content, post_gate_changes = _apply_explicit_revision_constraints(content, instruction)
+    if post_gate_changes:
+        explicit_changes = list(dict.fromkeys([*explicit_changes, *post_gate_changes]))
+        review = {
+            **review,
+            "corrected_content": content,
+            "explicit_revision_constraints": explicit_changes,
+        }
     candidate_id, now = _id(), now_iso()
     candidate_source = {
         **source,
@@ -2827,8 +2955,10 @@ async def revise_chapter(
         "visual_evidence": visual_evidence,
         "used_visual_ids": draft.get("used_visual_ids") or [],
         "literary_inferences": draft.get("literary_inferences") or [],
+        "narrative_plan": narrative_plan,
         "revision_instruction": instruction,
         "revision_mode": mode,
+        "explicit_revision_constraints": explicit_changes,
     }
     with connection() as conn:
         conn.execute(
