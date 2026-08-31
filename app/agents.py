@@ -22,6 +22,7 @@ from .prompts import (
     FORCED_CHAPTER_LINK_SYSTEM,
     INTERVIEW_SYSTEM,
     INTERVIEW_REPLY_EDITOR_SYSTEM,
+    LITERARY_QUALITY_SYSTEM,
     MEMORY_SYSTEM,
     MERGE_SYSTEM,
     PEOPLE_CURATOR_SYSTEM,
@@ -816,24 +817,31 @@ async def draft_chapter(
         lambda: fallback,
     )
     validated = _validated(result, ChapterAgentOutput, fallback)
-    if not settings.use_mock_llm and _content_length(validated["content"]) < target_min:
-        retry_payload = {
-            **payload,
-            "previous_content": validated["content"],
-            "revision_instruction": (
-                f"当前草稿只有约{_content_length(validated['content'])}字。请重新组织而不是简单重复，"
-                f"保持人物、时间、地点、关系、核心事件和结果不变，尽量写到{target_min}～{target_max}字；"
-                "可结合照片证据补足画面，并用合理文学推断写出心理变化、主题和如今回望。"
-                "不得虚构直接引语，不要同义反复。"
-            ),
-        }
-        expanded = await gateway.generate_json(
-            "chapter_agent",
-            CHAPTER_SYSTEM,
-            retry_payload,
-            lambda: validated,
-        )
-        validated = _validated(expanded, ChapterAgentOutput, validated)
+    # 篇幅下限：访谈内容不多时目标值较低，但成稿仍必须达到可读篇幅，
+    # 避免生成只有三五句的“章节”。
+    floor = max(settings.min_chapter_chars, target_min)
+    if not settings.use_mock_llm:
+        for _ in range(3):
+            length = _content_length(str(validated.get("content") or ""))
+            if length >= floor:
+                break
+            retry_payload = {
+                **payload,
+                "previous_content": validated["content"],
+                "revision_instruction": (
+                    f"当前草稿只有约{length}字，不足{floor}字。请重新组织而不是简单重复，"
+                    f"保持人物、时间、地点、关系、核心事件和结果不变，补足到{floor}～{target_max}字："
+                    "增补强感官的现场细节（光线、气味、声音、动作、微表情）、放缓 2～3 个高光切片，"
+                    "并写出当下的犹豫与后来的回望。不得虚构直接引语，不要同义反复和空泛抒情。"
+                ),
+            }
+            expanded = await gateway.generate_json(
+                "chapter_agent",
+                CHAPTER_SYSTEM,
+                retry_payload,
+                lambda: validated,
+            )
+            validated = _validated(expanded, ChapterAgentOutput, validated)
     return validated
 
 
@@ -909,6 +917,65 @@ async def review_common_sense(
                 for fact in (facts or [])
             ],
             "visual_evidence": visual_evidence or [],
+        },
+        fallback,
+    )
+    return _validated(result, ReviewAgentOutput, fallback())
+
+
+ABSTRACT_TELLING_WORDS = (
+    "非常艰难", "感慨万千", "无比激动", "意义非凡", "热泪盈眶", "刻骨铭心",
+    "感慨万分", "激动万分", "难以言表", "五味杂陈", "思绪万千", "终生难忘",
+)
+
+
+def literary_quality_gate(
+    content: str,
+    min_chars: int | None = None,
+) -> list[str]:
+    """确定性文学性门禁：篇幅下限、分段与空泛抒情检测。
+
+    只在非 Mock 模式由调用方决定是否启用；这里保持纯函数，便于测试。
+    """
+    issues: list[str] = []
+    floor = max(int(min_chars or 0), 0)
+    body = str(content or "").strip()
+    length = _content_length(body)
+    if floor and length < floor:
+        issues.append(f"成稿只有约{length}字，不足{floor}字")
+    paragraphs = [line.strip() for line in body.splitlines() if line.strip()]
+    if length >= 200 and len(paragraphs) < 3:
+        issues.append("整章没有分段，缺少入局、展开、转折与沉淀的层次")
+    abstract = [word for word in ABSTRACT_TELLING_WORDS if word in body]
+    if len(abstract) >= 2:
+        issues.append("出现空泛抒情：" + "、".join(abstract[:4]))
+    return issues
+
+
+async def review_literary_quality(
+    content: str,
+    facts: list[dict[str, Any]],
+    min_chars: int | None = None,
+    narrative_person: str = "first",
+    project_id: str | None = None,
+) -> dict[str, Any]:
+    """文学性审查：按非虚构自传标准检查具象描写、结构、张力与克制收尾。"""
+
+    def fallback() -> dict[str, Any]:
+        return {"passed": True, "issues": [], "corrected_content": content}
+
+    result = await gateway.generate_json(
+        "literary_quality_reviewer",
+        LITERARY_QUALITY_SYSTEM,
+        {
+            "project_id": project_id,
+            "content": content,
+            "min_chars": min_chars or 0,
+            "narrative_person": narrative_person,
+            "facts": [
+                {"fact_type": fact.get("fact_type"), "value": fact.get("value")}
+                for fact in (facts or [])
+            ],
         },
         fallback,
     )

@@ -36,6 +36,8 @@ class Settings:
     context_recent_turns: int = int(os.getenv("CONTEXT_RECENT_TURNS", "10"))
     life_snapshot_max_people: int = int(os.getenv("LIFE_SNAPSHOT_MAX_PEOPLE", "24"))
     life_snapshot_max_events: int = int(os.getenv("LIFE_SNAPSHOT_MAX_EVENTS", "30"))
+    min_chapter_chars: int = int(os.getenv("MIN_CHAPTER_CHARS", "500"))
+    literary_quality_review_enabled: bool = _as_bool(os.getenv("LITERARY_QUALITY_REVIEW"), True)
 
     @property
     def db_path(self) -> Path:

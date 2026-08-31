@@ -1297,6 +1297,69 @@ def _chapter_summary_rows(project_id: str) -> list[dict[str, Any]]:
     return rows
 
 
+async def _apply_quality_gates(
+    corrected: str,
+    review: dict[str, Any],
+    usable_facts: list[dict[str, Any]],
+    places: list[str],
+    visual_evidence: list[dict[str, Any]],
+    project_id: str,
+    narrative_person: str,
+) -> tuple[str, dict[str, Any]]:
+    """章节成稿后的三道质量闸门：常识（硬）、文学性（软）、确定性门禁（硬）。
+
+    常识与确定性门禁失败会阻止确认；文学性审查只记录意见并应用改写稿，
+    不阻止确认——文学判断不该剥夺用户对内容的决定权。
+    """
+    common_sense = await agents.review_common_sense(
+        corrected, usable_facts, places, visual_evidence, project_id
+    )
+    if not common_sense.get("passed", True):
+        corrected = str(common_sense.get("corrected_content") or corrected).strip() or corrected
+        review = {
+            **review,
+            "passed": False,
+            "issues": [
+                *(review.get("issues") or []),
+                *(f"常识矛盾：{issue}" for issue in common_sense.get("issues", [])),
+            ],
+            "corrected_content": corrected,
+        }
+    review = {
+        **review,
+        "common_sense_review": {
+            "passed": bool(common_sense.get("passed", True)),
+            "issues": common_sense.get("issues", []),
+        },
+    }
+    if not settings.literary_quality_review_enabled:
+        return corrected, review
+    literary = await agents.review_literary_quality(
+        corrected, usable_facts, settings.min_chapter_chars, narrative_person, project_id
+    )
+    literary_issues = [str(issue) for issue in literary.get("issues", [])]
+    if not settings.use_mock_llm:
+        literary_issues.extend(agents.literary_quality_gate(corrected, settings.min_chapter_chars))
+    if literary_issues:
+        corrected = str(literary.get("corrected_content") or corrected).strip() or corrected
+        review = {
+            **review,
+            "issues": [
+                *(review.get("issues") or []),
+                *(f"文学性：{issue}" for issue in literary_issues),
+            ],
+            "corrected_content": corrected,
+        }
+    review = {
+        **review,
+        "literary_quality_review": {
+            "passed": bool(literary.get("passed", True)) and not literary_issues,
+            "issues": literary_issues,
+        },
+    }
+    return corrected, review
+
+
 async def generate_chapter(session_id: str) -> dict[str, Any]:
     session = session_detail(session_id)
     if session["status"] == "pending_confirmation":
@@ -1349,25 +1412,15 @@ async def generate_chapter(session_id: str) -> dict[str, Any]:
         forbidden_visual_terms=forbidden_terms,
     )
     corrected = str(review.get("corrected_content") or content).strip()
-    # 常识审查在确定性门禁之后运行，只处理门禁未覆盖的地理/年代/物理矛盾。
-    common_sense = await agents.review_common_sense(
-        corrected, usable_facts, places, visual_evidence, project["id"]
+    corrected, review = await _apply_quality_gates(
+        corrected,
+        review,
+        usable_facts,
+        places,
+        visual_evidence,
+        project["id"],
+        project["narrative_person"],
     )
-    if not common_sense.get("passed", True):
-        corrected = str(common_sense.get("corrected_content") or corrected).strip() or corrected
-        review = {
-            **review,
-            "passed": False,
-            "issues": [
-                *(review.get("issues") or []),
-                *(f"常识矛盾：{issue}" for issue in common_sense.get("issues", [])),
-            ],
-            "corrected_content": corrected,
-        }
-    review = {**review, "common_sense_review": {
-        "passed": bool(common_sense.get("passed", True)),
-        "issues": common_sense.get("issues", []),
-    }}
     chapter_id, version_id, now = _id(), _id(), now_iso()
     title = str(draft.get("title") or "一张照片的故事").strip()[:100]
     source_snapshot = {
@@ -2755,6 +2808,15 @@ async def revise_chapter(
         forbidden_visual_terms=forbidden_terms,
     )
     content = str(review.get("corrected_content") or content).strip()
+    content, review = await _apply_quality_gates(
+        content,
+        review,
+        draft_facts,
+        places,
+        visual_evidence,
+        project["id"],
+        project["narrative_person"],
+    )
     candidate_id, now = _id(), now_iso()
     candidate_source = {
         **source,

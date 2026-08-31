@@ -14,6 +14,7 @@ from app.agents import (
     _interview_reply_length_guidance,
     enforce_grounding_review,
     interview_priority_question,
+    literary_quality_gate,
     next_interview_turn,
     normalize_interview_output,
     previous_reply_openings,
@@ -502,6 +503,52 @@ def test_entity_place_conflicts_flags_declared_landmark() -> None:
     assert conflicts == ["埃菲尔铁塔"]
 
 
+def test_literary_quality_gate_flags_short_flat_and_abstract_text() -> None:
+    short = "那天下班后我们拍了一张照片。"
+    issues = literary_quality_gate(short, 500)
+    assert any("不足500字" in issue for issue in issues)
+
+    flat = "那年的事情我记得很清楚。" * 40
+    issues = literary_quality_gate(flat, 500)
+    assert any("没有分段" in issue for issue in issues)
+
+    abstract = (
+        "那段时间非常艰难，我每天都很累。\n\n"
+        "后来事情有了转机，我激动万分。\n\n"
+        + "窗外的风把桌上的纸吹起来，我按住它们，指腹蹭到纸边的毛口。\n" * 20
+    )
+    issues = literary_quality_gate(abstract, 500)
+    assert any("空泛抒情" in issue for issue in issues)
+
+
+def test_literary_quality_gate_passes_structured_chapter() -> None:
+    chapter = "\n\n".join(
+        [
+            "傍晚的江风带着水汽，吹得头发贴在额头上，栏杆被晒了一天，摸上去还是温的。",
+            "同事忽然说“来，拍一张”，我们三个挤在一起，她把手搭在我肩上，指节压着我的外套。",
+            "照片定格的那一刻，我没看镜头，只是想着杭州的西湖——同样是水，这里的更开阔。",
+            "后来回到杭州，我偶尔翻到它，还是会想起那天江面慢慢暗下去的样子。",
+        ]
+    )
+    assert literary_quality_gate(chapter * 4, 500) == []
+
+
+def test_generated_chapter_records_literary_quality_review() -> None:
+    with TestClient(app) as client:
+        project = create_project(client, "文学性闸门测试")
+        _, session = upload_story(
+            client,
+            project["id"],
+            ["1985年我和爱人陈国强在井研县机械厂参加技术革新，我们后来一起站在车间门口拍了合影。"],
+        )
+        chapter = generate(client, session["id"])
+        review = json.loads(chapter["current_version"]["review_json"])
+        assert "common_sense_review" in review
+        assert "literary_quality_review" in review
+        assert isinstance(review["literary_quality_review"]["issues"], list)
+        client.delete(f"/api/projects/{project['id']}")
+
+
 def test_confirmed_place_texts_collects_place_facts_and_location() -> None:
     facts = [
         {"fact_type": "place", "value": "上海外滩"},
@@ -927,11 +974,12 @@ def test_model_runs_are_audited() -> None:
         _, session = upload_story(client, project["id"], ["这是在学校拍的毕业照。"])
         generate(client, session["id"])
         runs = fetch_all("SELECT * FROM model_runs ORDER BY created_at")
-        assert len(runs) >= before + 5
-        assert {run["agent_name"] for run in runs[-5:]} >= {
-            "memory_agent", "interview_agent", "chapter_agent", "review_agent", "common_sense_reviewer"
+        assert len(runs) >= before + 6
+        assert {run["agent_name"] for run in runs[-6:]} >= {
+            "memory_agent", "interview_agent", "chapter_agent", "review_agent",
+            "common_sense_reviewer", "literary_quality_reviewer",
         }
-        assert all(run["provider"] == "mock" for run in runs[-5:])
+        assert all(run["provider"] == "mock" for run in runs[-6:])
         client.delete(f"/api/projects/{project['id']}")
 
 
