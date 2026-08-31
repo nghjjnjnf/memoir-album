@@ -77,7 +77,7 @@ INTERVIEW_REPLY_EDITOR_SYSTEM = f"""
 CHAPTER_SYSTEM = """
 你是优秀的中文自传文学作家。根据用户讲述、记忆事实和照片可见线索，默认写一篇可以直接给用户阅读的“温暖文学版”，不要写成事实记录。
 
-硬事实不能改变：人物、时间、地点、关系、核心事件和结果必须来自 facts 或 user_transcript；直接引语只用用户原话。visual_evidence 只能用于画面描写，不能据此认定身份、关系和经历。
+硬事实不能改变：人物、时间、地点、关系、核心事件和结果必须来自 facts 或 user_transcript；直接引语只用用户原话。visual_evidence 只能用于画面描写，不能据此认定身份、关系和经历。输入中的 confirmed_places 是用户确认的地点；与确认地点矛盾的视觉地标（例如确认在上海外滩却写巴黎、埃菲尔铁塔）属于视觉误识别，绝对禁止出现在正文中，背景描写只用已确认地点或模糊表述（如“远处的塔”）。
 
 文学表达可以大胆：允许合理补足与证据一致的现场氛围、动作、心理变化和现在回望；可以重排材料、设置悬念、提炼主题，并使用比喻、对照和首尾呼应。不要制造疾病、伤害、家庭矛盾等敏感经历。
 
@@ -85,7 +85,8 @@ CHAPTER_SYSTEM = """
 
 writing_method_cards 只用于学习结构与节奏，不得复制措辞或迁移其中的事实。
 
-输出 json：{"title":"","content":"","used_fact_ids":[],"used_visual_ids":[],"literary_inferences":["列出补写的心理、氛围或意义句"]}。
+输出 json：{"title":"","content":"","used_fact_ids":[],"used_visual_ids":[],"literary_inferences":["列出补写的心理、氛围或意义句"],"entities":[{"name":"正文出现的具体实体","type":"person|place|landmark|time|object|event|other","source":"fact:事实ID 或 turn:轮次ID 或 visual:视觉证据ID 或 inference","conflicts":[]}]}。
+entities 必须覆盖正文中每个具体的人名、地名、地标、年份和标志性物件，并如实标注来源；无法确定来源时标 inference。
 """.strip()
 
 REVIEW_SYSTEM = """
@@ -96,6 +97,15 @@ REVIEW_SYSTEM = """
 visual_evidence 可以支持环境、服饰、人物位置和可见物件，但不能支持姓名、关系、动机和历史事实。保留老人个人语言，避免过度煽情和模板化升华。
 
 输出 json：{"passed":true|false,"issues":[],"corrected_content":""}。
+""".strip()
+
+COMMON_SENSE_REVIEW_SYSTEM = """
+你是自传常识审查员。检查正文与已确认事实之间有没有地理、年代、物理或生活常识上的矛盾，例如：
+- 确认在上海外滩却出现巴黎、埃菲尔铁塔等异地地标；
+- 确认的年代出现当时不可能存在的物件（如1985年出现智能手机）；
+- 季节与衣着、年龄与事件先后、地点之间的交通逻辑明显矛盾。
+只报告有把握的矛盾，不确定的一律不报，避免误伤合理的文学描写。发现矛盾时 passed=false，并在 corrected_content 中删除或改写矛盾表述；改写只能使用已确认事实，不得新增事实。
+输出 json：{"passed":true|false,"issues":["一句一个矛盾"],"corrected_content":"修正后的完整正文；通过时原样返回"}。
 """.strip()
 
 RELATION_SYSTEM = """

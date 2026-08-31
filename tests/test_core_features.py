@@ -21,6 +21,12 @@ from app.agents import (
     reply_opening_repeats,
 )
 from app.db import execute, fetch_all
+from app.evidence_arbitration import (
+    arbitrate_observation,
+    confirmed_place_texts,
+    confirmed_years,
+    entity_place_conflicts,
+)
 from app.main import app
 from app.vision import opening_from_observation
 
@@ -436,6 +442,72 @@ def test_chapter_length_target_grows_with_interview_depth() -> None:
     assert rich_target[0] > short_target[0]
     assert rich_target[0] >= 900
     assert rich_target[1] <= 1600
+
+
+def test_place_arbitration_drops_conflicting_visual_terms() -> None:
+    observation = {
+        "scene": "看起来像在阳台或窗边，背景是城市建筑，远处有埃菲尔铁塔，天空呈黄昏色彩。",
+        "place_clues": [{"value": "巴黎", "basis": "背景中可见埃菲尔铁塔", "confidence": "high"}],
+        "objects": ["埃菲尔铁塔", "城市建筑", "窗框"],
+        "time_clues": [{"value": "可能为傍晚或黄昏", "basis": "天空呈橙黄色渐变", "confidence": "medium"}],
+        "people_count": 3,
+    }
+    confirmed = ["上海外滩", "杭州"]
+    filtered, forbidden = arbitrate_observation(observation, confirmed, [])
+    assert forbidden == ["巴黎", "埃菲尔铁塔"]
+    assert filtered["place_clues"] == []
+    assert filtered["objects"] == ["城市建筑", "窗框"]
+    assert filtered["scene"] == observation["scene"]  # 场景文本原样保留，由证据组装层丢弃
+    assert any("误识别" in note for note in filtered.get("arbitration_notes", []))
+
+
+def test_time_arbitration_drops_conflicting_time_clue() -> None:
+    observation = {
+        "scene": "旧照片",
+        "place_clues": [],
+        "objects": [],
+        "time_clues": [
+            {"value": "可能为20世纪中后期", "basis": "黑白照片风格", "confidence": "medium"},
+            {"value": "可能为2010年代", "basis": "衣着", "confidence": "medium"},
+        ],
+    }
+    years = confirmed_years([{"fact_type": "time", "value": "2023年拍的"}])
+    assert years == [2023]
+    filtered, forbidden = arbitrate_observation(observation, [], years)
+    assert "可能为20世纪中后期" in forbidden
+    assert "可能为2010年代" in forbidden
+    assert filtered["time_clues"] == []
+
+
+def test_grounding_review_removes_conflicting_landmark_sentence() -> None:
+    content = "我们在外滩的黄昏里合了影。照片里远处的埃菲尔铁塔只是个小小的影子，可我们笑得真真切切。后来回到杭州还会想起那天。"
+    review = enforce_grounding_review(
+        {"passed": True, "issues": [], "corrected_content": content},
+        content,
+        [{"fact_type": "place", "value": "上海外滩"}],
+        forbidden_visual_terms=["埃菲尔铁塔", "巴黎"],
+    )
+    assert review["passed"] is False
+    assert "埃菲尔铁塔" not in review["corrected_content"]
+    assert "我们在外滩的黄昏里合了影" in review["corrected_content"]
+    assert any("误识别" in issue for issue in review["issues"])
+
+
+def test_entity_place_conflicts_flags_declared_landmark() -> None:
+    entities = [
+        {"name": "上海外滩", "type": "place", "source": "fact:f1", "conflicts": []},
+        {"name": "埃菲尔铁塔", "type": "landmark", "source": "visual:v1", "conflicts": []},
+    ]
+    conflicts = entity_place_conflicts(entities, ["上海外滩"])
+    assert conflicts == ["埃菲尔铁塔"]
+
+
+def test_confirmed_place_texts_collects_place_facts_and_location() -> None:
+    facts = [
+        {"fact_type": "place", "value": "上海外滩"},
+        {"fact_type": "person", "value": "同事小李"},
+    ]
+    assert confirmed_place_texts(facts, "杭州") == ["上海外滩", "杭州"]
 
 
 def test_deterministic_review_rejects_unsupported_scene_padding() -> None:
@@ -855,11 +927,11 @@ def test_model_runs_are_audited() -> None:
         _, session = upload_story(client, project["id"], ["这是在学校拍的毕业照。"])
         generate(client, session["id"])
         runs = fetch_all("SELECT * FROM model_runs ORDER BY created_at")
-        assert len(runs) >= before + 4
-        assert {run["agent_name"] for run in runs[-4:]} >= {
-            "memory_agent", "interview_agent", "chapter_agent", "review_agent"
+        assert len(runs) >= before + 5
+        assert {run["agent_name"] for run in runs[-5:]} >= {
+            "memory_agent", "interview_agent", "chapter_agent", "review_agent", "common_sense_reviewer"
         }
-        assert all(run["provider"] == "mock" for run in runs[-4:])
+        assert all(run["provider"] == "mock" for run in runs[-5:])
         client.delete(f"/api/projects/{project['id']}")
 
 

@@ -22,6 +22,12 @@ from .context_memory import (
     select_recent_turns,
 )
 from .db import connection, execute, fetch_all, fetch_one, now_iso
+from .evidence_arbitration import (
+    arbitrate_observation,
+    confirmed_place_texts,
+    confirmed_years,
+    entity_place_conflicts,
+)
 from .writing_methods import retrieve_method_cards
 from .vision import opening_from_observation, photo_observation, user_context_slots
 
@@ -436,14 +442,28 @@ def _usable_facts(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-def _visual_evidence_for_photo(photo_id: str | None) -> list[dict[str, str]]:
-    """把后台识图结果整理成只供写作使用的可见证据，不传地点/年代猜测和 OCR。"""
+def _visual_evidence_for_photo(
+    photo_id: str | None,
+    confirmed_places: list[str] | None = None,
+    confirmed_years: list[int] | None = None,
+    user_texts: list[str] | None = None,
+) -> tuple[list[dict[str, str]], list[str]]:
+    """把后台识图结果整理成只供写作使用的可见证据，不传地点/年代猜测和 OCR。
+
+    传入已确认地点/年份时先做证据仲裁：与确认事实矛盾的视觉地点候选及其
+    依据中的具体地标按视觉误识别剔除，返回（证据列表, 被否决术语）。
+    """
     if not photo_id:
-        return []
+        return [], []
     observation = photo_observation(photo_id)
     if not observation or observation.get("status") != "ready":
-        return []
+        return [], []
     data = observation.get("observations") or {}
+    forbidden: list[str] = []
+    if confirmed_places or confirmed_years:
+        data, forbidden = arbitrate_observation(
+            data, confirmed_places or [], confirmed_years, user_texts or []
+        )
     evidence: list[dict[str, str]] = []
 
     def add(evidence_id: str, kind: str, value: Any) -> None:
@@ -451,7 +471,9 @@ def _visual_evidence_for_photo(photo_id: str | None) -> list[dict[str, str]]:
         if text:
             evidence.append({"id": evidence_id, "kind": kind, "text": text[:800]})
 
-    add(f"{photo_id}:scene", "scene", data.get("scene"))
+    scene_text = str(data.get("scene") or "").strip()
+    if scene_text and not any(term in scene_text for term in forbidden):
+        add(f"{photo_id}:scene", "scene", scene_text)
     for index, person in enumerate(data.get("people") or [], 1):
         if isinstance(person, dict):
             add(
@@ -462,7 +484,9 @@ def _visual_evidence_for_photo(photo_id: str | None) -> list[dict[str, str]]:
     objects = [str(item).strip() for item in (data.get("objects") or []) if str(item).strip()]
     if objects:
         add(f"{photo_id}:objects", "visible_objects", "、".join(objects[:20]))
-    return evidence
+    for note in data.get("arbitration_notes") or []:
+        add(f"{photo_id}:arbitration", "arbitration_note", note)
+    return evidence, forbidden
 
 
 def _event_for_session(session_id: str) -> dict[str, Any]:
@@ -1289,17 +1313,29 @@ async def generate_chapter(session_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="当前没有允许写入书稿的事实，请先补充或恢复事实线索")
     story_text = "\n".join(fact["value"] for fact in usable_facts)
     method_cards = retrieve_method_cards(project["narrative_person"], story_text)
-    visual_evidence = _visual_evidence_for_photo(session.get("photo_id"))
+    places = confirmed_place_texts(usable_facts, event.get("location"))
+    years = confirmed_years(usable_facts)
+    user_texts = [turn["content"] for turn in session["turns"] if turn.get("role") == "user"]
+    visual_evidence, forbidden_terms = _visual_evidence_for_photo(
+        session.get("photo_id"), places, years, user_texts
+    )
     context_pack = await _prepare_session_context(session)
     draft = await agents.draft_chapter(
         project["narrative_person"], session["turns"], usable_facts, method_cards, visual_evidence,
         model_turns=context_pack["model_turns"],
         conversation_summary=context_pack["conversation_summary"],
         context_control=context_pack["context_control"],
+        confirmed_places=places,
     )
     content = str(draft.get("content", "")).strip()
     if not content:
         raise HTTPException(status_code=502, detail="章节生成失败，请稍后重试")
+    # 声明式实体门禁：模型自己申报的地点/地标实体与确认地点无重叠即视为矛盾，
+    # 与仲裁否决的视觉术语一起进入确定性审校。
+    declared_entities = draft.get("entities") or []
+    for conflict in entity_place_conflicts(declared_entities, places):
+        if conflict not in forbidden_terms:
+            forbidden_terms.append(conflict)
     review = await agents.review_chapter(
         content,
         usable_facts,
@@ -1310,8 +1346,28 @@ async def generate_chapter(session_id: str) -> dict[str, Any]:
         model_turns=context_pack["model_turns"],
         conversation_summary=context_pack["conversation_summary"],
         context_control=context_pack["context_control"],
+        forbidden_visual_terms=forbidden_terms,
     )
     corrected = str(review.get("corrected_content") or content).strip()
+    # 常识审查在确定性门禁之后运行，只处理门禁未覆盖的地理/年代/物理矛盾。
+    common_sense = await agents.review_common_sense(
+        corrected, usable_facts, places, visual_evidence, project["id"]
+    )
+    if not common_sense.get("passed", True):
+        corrected = str(common_sense.get("corrected_content") or corrected).strip() or corrected
+        review = {
+            **review,
+            "passed": False,
+            "issues": [
+                *(review.get("issues") or []),
+                *(f"常识矛盾：{issue}" for issue in common_sense.get("issues", [])),
+            ],
+            "corrected_content": corrected,
+        }
+    review = {**review, "common_sense_review": {
+        "passed": bool(common_sense.get("passed", True)),
+        "issues": common_sense.get("issues", []),
+    }}
     chapter_id, version_id, now = _id(), _id(), now_iso()
     title = str(draft.get("title") or "一张照片的故事").strip()[:100]
     source_snapshot = {
@@ -2236,7 +2292,7 @@ async def weave_book(project_id: str) -> dict[str, Any]:
         visual_evidence = source.get("visual_evidence")
         if not isinstance(visual_evidence, list) or not visual_evidence:
             photo_id = source.get("photo_id") or ((chapter.get("photos") or [{}])[0].get("id"))
-            visual_evidence = _visual_evidence_for_photo(photo_id)
+            visual_evidence, _ = _visual_evidence_for_photo(photo_id)
         brief = briefs.get(chapter["id"], {"chapter_id": chapter["id"]})
         allowed_chapter_ids = {
             chapter["id"],
@@ -2655,9 +2711,15 @@ async def revise_chapter(
         project["narrative_person"], "\n".join(fact["value"] for fact in draft_facts)
     )
     visual_evidence = source.get("visual_evidence")
+    forbidden_terms: list[str] = []
+    places = confirmed_place_texts(draft_facts)
+    years = confirmed_years(draft_facts)
+    user_texts = [turn.get("content") for turn in session.get("turns", []) if turn.get("role") == "user"]
     # 首次识图失败后，用户可能已经点击“重新识图”；旧版本中的空证据包不应阻止新版本读取结果。
     if not isinstance(visual_evidence, list) or not visual_evidence:
-        visual_evidence = _visual_evidence_for_photo(source.get("photo_id"))
+        visual_evidence, forbidden_terms = _visual_evidence_for_photo(
+            source.get("photo_id"), places, years, user_texts
+        )
     context_pack = await _prepare_session_context(session) if session_id else {
         "model_turns": session.get("turns", []),
         "conversation_summary": {},
@@ -2674,8 +2736,12 @@ async def revise_chapter(
         model_turns=context_pack["model_turns"],
         conversation_summary=context_pack["conversation_summary"],
         context_control=context_pack["context_control"],
+        confirmed_places=places,
     )
     content = str(draft.get("content") or current["content"]).strip()
+    for conflict in entity_place_conflicts(draft.get("entities") or [], places):
+        if conflict not in forbidden_terms:
+            forbidden_terms.append(conflict)
     review = await agents.review_chapter(
         content,
         draft_facts,
@@ -2686,6 +2752,7 @@ async def revise_chapter(
         model_turns=context_pack["model_turns"],
         conversation_summary=context_pack["conversation_summary"],
         context_control=context_pack["context_control"],
+        forbidden_visual_terms=forbidden_terms,
     )
     content = str(review.get("corrected_content") or content).strip()
     candidate_id, now = _id(), now_iso()

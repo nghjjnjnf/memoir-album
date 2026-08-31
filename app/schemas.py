@@ -91,12 +91,20 @@ class InterviewAgentOutput(BaseModel):
     reason: str = Field(default="", max_length=300)
 
 
+class EntityDeclaration(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    type: Literal["person", "place", "landmark", "time", "object", "event", "other"] = "other"
+    source: str = Field(default="", max_length=120)
+    conflicts: list[str] = Field(default_factory=list)
+
+
 class ChapterAgentOutput(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     content: str = Field(min_length=1)
     used_fact_ids: list[str] = Field(default_factory=list)
     used_visual_ids: list[str] = Field(default_factory=list)
     literary_inferences: list[str] = Field(default_factory=list)
+    entities: list[EntityDeclaration] = Field(default_factory=list)
 
 
 class ChapterFactLinkOutput(BaseModel):

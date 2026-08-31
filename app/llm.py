@@ -119,6 +119,8 @@ class LLMGateway:
             max_tokens = 4500
         elif agent_name == "book_director":
             max_tokens = 3500
+        elif agent_name == "common_sense_reviewer":
+            max_tokens = 4500
         elif agent_name == "chapter_fact_linker":
             max_tokens = 1800
         elif agent_name in {"autobiography_compiler", "autobiography_regroup_editor"}:

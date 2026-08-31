@@ -6,6 +6,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from .config import settings
+from .evidence_arbitration import entity_place_conflicts
 from .llm import gateway
 from .prompts import (
     AUTOBIOGRAPHY_COMPILER_SYSTEM,
@@ -16,6 +17,7 @@ from .prompts import (
     CHAPTER_FACT_LINK_SYSTEM,
     CHAPTER_SYSTEM,
     CHAPTER_REWEAVE_SYSTEM,
+    COMMON_SENSE_REVIEW_SYSTEM,
     CONTEXT_COMPACTION_SYSTEM,
     FORCED_CHAPTER_LINK_SYSTEM,
     INTERVIEW_SYSTEM,
@@ -680,8 +682,13 @@ def enforce_grounding_review(
     facts: list[dict[str, Any]],
     turns: list[dict[str, Any]] | None = None,
     visual_evidence: list[dict[str, Any]] | None = None,
+    forbidden_visual_terms: list[str] | None = None,
 ) -> dict[str, Any]:
-    """确定性门禁：具体外部细节需来自口述、事实或照片可见证据。"""
+    """确定性门禁：具体外部细节需来自口述、事实或照片可见证据。
+
+    forbidden_visual_terms 是证据仲裁否决的视觉术语（与用户确认地点/时间矛盾）；
+    包含这些术语的句子按视觉误识别处理，直接移出修正稿。
+    """
     evidence = "\n".join(
         [str(fact.get("value", "")) for fact in facts]
         + [
@@ -719,9 +726,14 @@ def enforce_grounding_review(
             corrected = corrected.replace(original, replacement)
             semantic_issues.append(issue)
     corrected_paragraphs: list[str] = []
+    forbidden = [term for term in (forbidden_visual_terms or []) if term]
     for paragraph in corrected.splitlines():
         kept: list[str] = []
         for sentence in _sentences(paragraph):
+            contradicted = [term for term in forbidden if term in sentence]
+            if contradicted:
+                detected.extend(contradicted)
+                continue
             unsupported = [
                 marker for marker in CHAPTER_HARD_RISK_MARKERS
                 if marker in sentence and marker not in evidence
@@ -736,7 +748,12 @@ def enforce_grounding_review(
         return review
     issues = [str(issue) for issue in review.get("issues", [])]
     if detected:
-        issues.append("发现用户原话中没有依据的细节：" + "、".join(dict.fromkeys(detected)))
+        contradicted_terms = [term for term in forbidden if term in detected]
+        if contradicted_terms:
+            issues.append("与用户确认的地点或时间矛盾的视觉误识别：" + "、".join(dict.fromkeys(contradicted_terms)))
+        unsupported_terms = [term for term in detected if term not in forbidden]
+        if unsupported_terms:
+            issues.append("发现用户原话中没有依据的细节：" + "、".join(dict.fromkeys(unsupported_terms)))
     issues.extend(semantic_issues)
     safe_content = "\n\n".join(corrected_paragraphs).strip()
     return {
@@ -758,6 +775,7 @@ async def draft_chapter(
     model_turns: list[dict[str, Any]] | None = None,
     conversation_summary: dict[str, Any] | None = None,
     context_control: dict[str, Any] | None = None,
+    confirmed_places: list[str] | None = None,
 ) -> dict[str, Any]:
     fallback = _mock_chapter(person, facts)
     target_min, target_max = _chapter_target_length(turns)
@@ -786,6 +804,7 @@ async def draft_chapter(
         "target_length_chars": {"min": target_min, "max": target_max},
         "writing_method_cards": method_cards,
         "visual_evidence": visual_evidence or [],
+        "confirmed_places": confirmed_places or [],
         "literary_mode": "bold_warm",
         "revision_instruction": instruction,
         "previous_content": previous_content,
@@ -828,6 +847,7 @@ async def review_chapter(
     model_turns: list[dict[str, Any]] | None = None,
     conversation_summary: dict[str, Any] | None = None,
     context_control: dict[str, Any] | None = None,
+    forbidden_visual_terms: list[str] | None = None,
 ) -> dict[str, Any]:
     def fallback() -> dict[str, Any]:
         issues = []
@@ -860,7 +880,39 @@ async def review_chapter(
         lambda: fallback_value,
     )
     validated = _validated(result, ReviewAgentOutput, fallback_value)
-    return enforce_grounding_review(validated, content, facts, turns, visual_evidence)
+    return enforce_grounding_review(
+        validated, content, facts, turns, visual_evidence, forbidden_visual_terms
+    )
+
+
+async def review_common_sense(
+    content: str,
+    facts: list[dict[str, Any]],
+    confirmed_places: list[str] | None = None,
+    visual_evidence: list[dict[str, Any]] | None = None,
+    project_id: str | None = None,
+) -> dict[str, Any]:
+    """常识审查：检查正文与确认事实之间地理、年代、物理等常识矛盾。"""
+
+    def fallback() -> dict[str, Any]:
+        return {"passed": True, "issues": [], "corrected_content": content}
+
+    result = await gateway.generate_json(
+        "common_sense_reviewer",
+        COMMON_SENSE_REVIEW_SYSTEM,
+        {
+            "project_id": project_id,
+            "content": content,
+            "confirmed_places": confirmed_places or [],
+            "facts": [
+                {"fact_type": fact.get("fact_type"), "value": fact.get("value")}
+                for fact in (facts or [])
+            ],
+            "visual_evidence": visual_evidence or [],
+        },
+        fallback,
+    )
+    return _validated(result, ReviewAgentOutput, fallback())
 
 
 async def suggest_relation(
