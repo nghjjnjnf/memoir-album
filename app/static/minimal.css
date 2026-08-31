@@ -544,8 +544,18 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 .reply-send-button.is-thinking { color: #fff; background: #52675b; border-color: #52675b; cursor: wait; }
 .reply-send-button.is-thinking .send-arrow { animation: reply-arrow-spin .78s linear infinite; }
 .composer-hint { margin: 7px 4px 0; color: #909792; font-size: 11px; text-align: right; }
-.interview-secondary-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
-.interview-secondary-actions .secondary { min-height: 36px; padding: 7px 11px; font-size: 12px; }
+.composer-generate-button {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 19px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: none;
+  flex: 0 0 auto;
+}
+.composer-generate-button:hover:not(:disabled) { transform: translateY(-1px); }
+.composer-generate-button.is-busy { cursor: wait; opacity: .85; }
 .message.user.pending { animation: optimistic-message-in .2s ease-out both; }
 
 @keyframes reply-arrow-spin { to { transform: rotate(360deg); } }
