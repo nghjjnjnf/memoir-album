@@ -295,7 +295,8 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 .sidebar .item-list.empty-text { padding: 10px 8px; color: #929994; font-size: 12px; }
 
 .privacy-note {
-  margin-top: 8px;
+  width: fit-content;
+  margin: 0 auto;
   position: relative;
   padding: 8px 7px;
   display: flex;
@@ -310,6 +311,7 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   line-height: 1.4;
   outline: none;
 }
+.page-footer { padding: 0 20px 18px; }
 .privacy-note::before { display: none; }
 .privacy-note-icon {
   width: 17px;
@@ -325,7 +327,7 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 .privacy-tooltip {
   position: absolute;
   z-index: 20;
-  left: 4px;
+  left: 50%;
   bottom: calc(100% + 7px);
   width: 220px;
   padding: 10px 11px;
@@ -336,12 +338,12 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   box-shadow: 0 10px 25px rgba(30, 43, 35, .12);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(4px);
+  transform: translate(-50%, 4px);
   transition: opacity .16s ease, transform .16s ease, visibility .16s ease;
   pointer-events: none;
 }
 .privacy-note:hover .privacy-tooltip,
-.privacy-note:focus .privacy-tooltip { opacity: 1; visibility: visible; transform: translateY(0); }
+.privacy-note:focus .privacy-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 
 .welcome {
   min-height: 420px;
