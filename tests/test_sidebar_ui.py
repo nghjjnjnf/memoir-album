@@ -43,3 +43,17 @@ def test_brand_aligns_with_sidebar_and_has_memoir_album_icon():
     assert "padding: 9px 22px 9px 29px;" in styles
     assert ".brand-block {\n  grid-column: 1;" in styles
     assert ".status-pill {\n  grid-column: 2;" in styles
+
+
+def test_interview_composer_supports_voice_arrow_and_optimistic_message():
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
+
+    assert 'id="voiceInputButton"' in html
+    assert 'id="replySendButton"' in html
+    assert 'class="send-arrow"' in html
+    assert "window.SpeechRecognition || window.webkitSpeechRecognition" in script
+    assert 'appendChatMessage("user", text, { pending: true })' in script
+    assert "setReplyThinking(true)" in script
+    assert ".reply-send-button.is-thinking .send-arrow" in styles

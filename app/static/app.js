@@ -85,6 +85,112 @@ function setBusy(button, busy, label = "处理中…") {
   }
 }
 
+let replyThinking = false;
+let voiceListening = false;
+let voiceRecognition = null;
+let voiceBaseText = "";
+let voiceFinalText = "";
+
+function appendChatMessage(role, content, { pending = false } = {}) {
+  const chat = $("chatMessages");
+  const message = document.createElement("div");
+  message.className = `message ${role}${pending ? " pending" : ""}`;
+  message.textContent = content;
+  message.style.setProperty("--message-index", Math.min(chat.children.length, 8));
+  chat.appendChild(message);
+  chat.scrollTop = chat.scrollHeight;
+  return message;
+}
+
+function resizeReplyInput() {
+  const input = $("replyText");
+  input.style.height = "auto";
+  input.style.height = `${Math.min(Math.max(input.scrollHeight, 54), 160)}px`;
+}
+
+function updateReplySendState() {
+  $("replySendButton").disabled = replyThinking || voiceListening || !$("replyText").value.trim();
+}
+
+function setReplyThinking(busy) {
+  replyThinking = busy;
+  const form = $("replyForm");
+  const input = $("replyText");
+  const send = $("replySendButton");
+  const voice = $("voiceInputButton");
+  form.setAttribute("aria-busy", busy ? "true" : "false");
+  send.classList.toggle("is-thinking", busy);
+  send.setAttribute("aria-label", busy ? "正在等待回复" : "发送讲述");
+  input.disabled = busy;
+  voice.disabled = busy;
+  updateReplySendState();
+}
+
+function setVoiceListening(active, status = "") {
+  voiceListening = active;
+  const button = $("voiceInputButton");
+  const input = $("replyText");
+  button.classList.toggle("is-listening", active);
+  button.setAttribute("aria-pressed", active ? "true" : "false");
+  button.setAttribute("aria-label", active ? "停止语音输入" : "开始语音输入");
+  input.readOnly = active;
+  $("voiceInputStatus").textContent = status || (active ? "正在听，点一下结束" : "");
+  updateReplySendState();
+}
+
+function setupVoiceInput() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const button = $("voiceInputButton");
+  if (!Recognition) {
+    button.classList.add("is-unsupported");
+    button.title = "当前浏览器不支持语音识别，请使用新版 Edge 或 Chrome";
+    button.addEventListener("click", () => toast("当前浏览器暂不支持语音输入，请使用新版 Edge 或 Chrome", true));
+    return;
+  }
+
+  voiceRecognition = new Recognition();
+  voiceRecognition.lang = "zh-CN";
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = true;
+
+  voiceRecognition.addEventListener("start", () => setVoiceListening(true));
+  voiceRecognition.addEventListener("result", (event) => {
+    let interimText = "";
+    for (let index = event.resultIndex; index < event.results.length; index += 1) {
+      const transcript = event.results[index][0].transcript.trim();
+      if (event.results[index].isFinal) voiceFinalText += `${transcript} `;
+      else interimText += transcript;
+    }
+    $("replyText").value = [voiceBaseText, voiceFinalText.trim(), interimText]
+      .filter(Boolean).join(" ").trim();
+    resizeReplyInput();
+  });
+  voiceRecognition.addEventListener("end", () => setVoiceListening(false));
+  voiceRecognition.addEventListener("error", (event) => {
+    const messages = {
+      "not-allowed": "没有获得麦克风权限，请在浏览器地址栏允许访问麦克风",
+      "no-speech": "这次没有听清，您可以再试一次",
+      network: "语音识别服务暂时不可用，请稍后再试",
+    };
+    setVoiceListening(false);
+    toast(messages[event.error] || "语音输入没有成功，请再试一次", true);
+  });
+
+  button.addEventListener("click", () => {
+    if (voiceListening) {
+      voiceRecognition.stop();
+      return;
+    }
+    voiceBaseText = $("replyText").value.trim();
+    voiceFinalText = "";
+    try {
+      voiceRecognition.start();
+    } catch (_) {
+      toast("语音输入正在启动，请稍等一下", true);
+    }
+  });
+}
+
 async function loadHealth() {
   try {
     const health = await api("/api/health");
@@ -508,13 +614,7 @@ function renderSession(session) {
   renderVisionObservation(session.photo_observation);
   const chat = $("chatMessages");
   chat.innerHTML = "";
-  session.turns.forEach((turn, index) => {
-    const message = document.createElement("div");
-    message.className = `message ${turn.role}`;
-    message.textContent = turn.content;
-    message.style.setProperty("--message-index", Math.min(index, 8));
-    chat.appendChild(message);
-  });
+  session.turns.forEach((turn) => appendChatMessage(turn.role, turn.content));
   chat.scrollTop = chat.scrollHeight;
   const facts = $("factList");
   facts.innerHTML = "";
@@ -558,6 +658,8 @@ function renderSession(session) {
   const interviewClosed = ["drafting", "pending_confirmation", "confirmed"].includes(session.status);
   $("replyForm").classList.toggle("hidden", interviewClosed);
   $("generateButton").textContent = ready ? "先看看整理后的故事" : "先整理一版给我看看";
+  resizeReplyInput();
+  updateReplySendState();
   $("interviewPanel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -970,20 +1072,38 @@ $("uploadForm").addEventListener("submit", async (event) => {
 
 $("replyForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const button = event.submitter;
   const text = $("replyText").value.trim();
-  if (!text) return;
-  setBusy(button, true, "正在整理…");
+  if (!text || replyThinking || voiceListening) return;
+  const optimisticMessage = appendChatMessage("user", text, { pending: true });
+  $("replyText").value = "";
+  resizeReplyInput();
+  setReplyThinking(true);
   try {
     const session = await api(`/api/sessions/${state.session.id}/reply`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
     });
     state.project = await api(`/api/projects/${state.project.id}`);
     renderTimeline(state.project.timeline || []);
-    $("replyText").value = "";
     renderSession(session);
-  } catch (error) { toast(error.message, true); }
-  finally { setBusy(button, false); }
+  } catch (error) {
+    optimisticMessage.remove();
+    $("replyText").value = text;
+    resizeReplyInput();
+    toast(error.message, true);
+  } finally {
+    setReplyThinking(false);
+  }
+});
+
+$("replyText").addEventListener("input", () => {
+  resizeReplyInput();
+  updateReplySendState();
+});
+
+$("replyText").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  event.preventDefault();
+  if (!$("replySendButton").disabled) $("replyForm").requestSubmit($("replySendButton"));
 });
 
 $("generateButton").addEventListener("click", async (event) => {
@@ -1234,4 +1354,7 @@ document.querySelector("[data-generate-book]").addEventListener("click", () => {
 });
 
 window.requestAnimationFrame(() => document.body.classList.add("page-ready"));
+setupVoiceInput();
+resizeReplyInput();
+updateReplySendState();
 Promise.all([loadHealth(), loadProjects(initialProjectId)]).catch((error) => toast(error.message, true));

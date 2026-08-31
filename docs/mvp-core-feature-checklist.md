@@ -55,7 +55,7 @@
 | F-15 | 本地可用界面与小程序迁移边界 | 浏览器可完成核心闭环；API 与页面分离；健康接口明确语音/视觉状态 | `local-mvp-implementation-plan.md` 4、13 | 已完成 | `app/static/`、REST API | HTTP 首页检查、`test_project_perspective_and_health` |
 | F-16 | 个人记忆时间线与跨访谈回填 | 上传顺序不决定人生顺序；事实归属稳定人生事件；后续访谈可补充旧事件；旧章节只提示新材料且不静默覆盖；章节目录按事件时间排列 | 本轮时间线设计讨论 | 已完成 | `timeline_events`、`chapter_events`、`_fact_target_event`、时间线界面 | `test_timeline_orders_by_life_time_and_backfills_old_event_without_overwriting_chapter` |
 | F-17 | 上传即识图与候选确认 | 后台提取并保存EXIF、人数、场景、物品、OCR及时间/地点候选；前端不展示检测报告；访谈每轮最多使用一个未确认线索自然询问；只有用户原话进入事实；视觉失败不阻断讲述；可重新识图 | 本轮视觉模型决策 | 已完成 | `photo_observations`、`app/vision.py`、后台视觉上下文 | `test_vision_opening_labels_image_information_as_unconfirmed_candidates`、真实视觉API端到端测试 |
-| F-18 | 默认文学版、低门槛修订与记忆隔离 | 文风修改只作用于候选正文，不污染人物、事件和事实记忆；“细节不准确”解析为事实变更提案，界面展示原记忆与新记忆；采用时追加新事实、撤回旧事实并同步明确年份到时间线，放弃时章节和记忆均不变 | `literary-autobiography-writing-spec.md` 2、10、11 | 已完成 | `CHAPTER_SYSTEM`、`_memory_correction_plan`、append-only `memory_facts`、候选稿记忆影响说明 | `test_adopting_fact_correction_updates_memory_append_only`；完整回归48项通过；周桂兰真实 DeepSeek 候选稿生成后放弃，当前版本指针保持不变 |
+| F-18 | 默认文学版、低门槛修订与记忆隔离 | 文风修改只作用于候选正文，不污染人物、事件和事实记忆；“细节不准确”解析为事实变更提案，界面展示原记忆与新记忆；采用时追加新事实、撤回旧事实并同步明确年份到时间线，放弃时章节和记忆均不变 | `literary-autobiography-writing-spec.md` 2、10、11 | 已完成 | `CHAPTER_SYSTEM`、`_memory_correction_plan`、append-only `memory_facts`、候选稿记忆影响说明 | `test_adopting_fact_correction_updates_memory_append_only`；完整回归49项通过；周桂兰真实 DeepSeek 候选稿生成后放弃，当前版本指针保持不变 |
 | F-19 | 整书人物与暗线关联 | 整书导演统一人物和2～4条暗线；逐章关联改写；事实链接重建正文来源；至少半数章节实质变化且至少3条跨章事实；整书版本不可变、失败不覆盖确认版 | 本轮整书关联设计讨论 | 部分完成 | `book_editions`、`Book Director`、`Chapter Reweaver`、`Cross-chapter Link Editor`、`Chapter Fact Linker`、`Book Continuity Reviewer`、整书关联版界面 | 26项自动测试通过；周桂兰第6版真实 DeepSeek：6/6章变化、17条跨章事实、4条暗线、0个模型审校失败；人工终检仍发现细节漂移，故未确认并导出人工终检版 |
 | F-20 | 共享人生记忆与阈值压缩 | 所有 Agent 共享版本化人物、事件和关键事实快照；上下文超过可配置阈值后压缩早期对话；保留摘要、最近对话和未解线索；原始 turns 不删除；正文不得反向成为事实 | `context-memory-and-compaction.md` | 已完成 | `app/context_memory.py`、`life_context_snapshots`、`conversation_compactions`、`LLMGateway.generate_json`、`_prepare_session_context` | `test_shared_life_snapshot_is_injected_into_agent_context`、`test_context_compression_triggers_at_token_boundary_without_deleting_turns`；完整回归 33 项通过 |
 | F-21 | 事件级时间解析与归属 | 照片说明和用户回复走统一解析链路；区分照片时间、支持时间、重访、其他时期和明确更正；人生阶段也可锁定；关联事件不得覆盖主时间；相对时间绑定讲述时间；旧数据可幂等回填 | `event-time-memory-design.md` | 已完成 | `event_mentions`、`event_relations`、`time_locked`、`_parse_event_mentions`、`_persist_event_mentions`、`reconcile_temporal_evidence` | `test_photo_note_life_stage_is_locked_before_later_revisit`、`test_one_reply_can_contain_capture_time_and_later_event`、`test_explicit_time_correction_replaces_locked_capture_time`；完整回归 36 项通过 |
@@ -64,6 +64,7 @@
 | F-24 | 用户输入驱动首问去重 | 用户标题或说明中已给出的时间、地点进入事件上下文；首轮访谈优先承接用户信息，不再用识图模板重复确认；重新加载零轮会话不新增或覆盖首句；视觉候选与用户信息冲突时以用户为准 | 本轮“上海交大”首问问题 | 已完成 | `user_context_slots`、`opening_from_observation`、`start_interview`、`session_detail` | `test_user_title_context_prevents_reasking_known_time_and_place`；完整回归 41 项通过 |
 | F-25 | 逐照片查看访谈记录 | 每个时间线故事显示“查看访谈记录”或“继续聊这张照片”；点击后恢复该照片绑定的 session、全部历史问答和事实；已成稿访谈以查看模式展示，照片资源已删除时仍可阅读文字 | 本轮历史对话查看需求 | 已完成 | `renderTimeline`、`renderSession`、`GET /api/sessions/{session_id}` | `test_each_timeline_story_can_reopen_its_saved_interview`；完整回归 43 项通过 |
 | F-26 | 内容驱动的自然访谈表达 | 不检测或轮换回复开头，不向模型提供固定开场句库；LLM 根据用户最新回答、对话上下文、事实与访谈目标自行决定如何起笔和组织整段；程序只负责事实、安全、边界和单问题门禁；门禁过滤后几乎无正文时才由 LLM 重新生成 | 本轮“不要检查重复开头，由 LLM 自然生成”决策 | 已完成 | `PERSONA`、`INTERVIEW_SYSTEM`、`INTERVIEW_REPLY_EDITOR_SYSTEM`、Interview Agent 温度配置 | `test_interview_uses_adaptive_length_without_opening_detector_or_padding_library`；真实 DeepSeek 动态回复测试；完整回归 43 项通过 |
+| F-27 | GPT 式语音访谈输入 | 输入框提供中文语音按钮与向上箭头发送；用户消息先乐观进入对话区，模型等待期间箭头旋转且禁止重复提交；失败时恢复原文字；Edge/Chrome 不支持时给出明确提示 | 本轮访谈输入体验需求 | 已完成 | Browser Web Speech API、`setupVoiceInput`、`setReplyThinking`、乐观消息渲染 | `test_interview_composer_supports_voice_arrow_and_optimistic_message`；浏览器检查语音、箭头、等待态与零控制台错误；完整回归 49 项通过 |
 
 ## 4. 完成门禁
 
@@ -89,10 +90,10 @@ python -m compileall app
 
 ## 6. MVP 0.7 回归记录
 
-- 自动测试：`43 passed`；Demo 数据预检：`26/26`；
+- 自动测试：`49 passed`；Demo 数据预检：`26/26`；
 - 前端 JavaScript 语法检查：通过；
 - Python 编译检查：通过；
-- F-01～F-18：全部达到当前测试范围的完成门禁；
+- F-01～F-18、F-20～F-27：全部达到当前测试范围的完成门禁；
 - 部分完成项：F-19（整书关联已可用，但全自动出版仍需人工终检）；
 - 明确延后：D-01、D-02、D-04～D-06；
 - 自动回归模型模式：Mock；本地交互服务模式：DeepSeek；

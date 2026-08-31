@@ -29,6 +29,7 @@ tmp-ui-review/
 outputs/*
 !outputs/github-demo-timeline.png
 !outputs/github-demo-book.png
+!outputs/github-demo-voice.png
 !outputs/revision-candidate-panel.png
 
 # Logs and local processes

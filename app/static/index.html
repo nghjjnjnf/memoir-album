@@ -6,7 +6,7 @@
   <title>岁影-Memoir Album · 人生故事</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23788f7b'/%3E%3Cpath d='M17 19h30v26H17zM22 35l7-8 6 7 4-4 4 5' fill='none' stroke='%23fffaf0' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css?v=20260826-living-autobiography-1">
-  <link rel="stylesheet" href="/static/minimal.css?v=20260830-revision-candidate-1">
+  <link rel="stylesheet" href="/static/minimal.css?v=20260831-voice-composer-1">
 </head>
 <body>
   <div class="page-decoration decoration-one" aria-hidden="true"></div>
@@ -160,10 +160,26 @@
               <section id="visionBox" class="vision-status-box hidden" aria-live="polite"></section>
               <div id="chatMessages" class="chat" aria-live="polite"></div>
               <form id="replyForm" class="reply-box">
-                <label for="replyText">您的讲述</label>
-                <textarea id="replyText" rows="4" placeholder="想到多少就说多少，也可以写“记不清”或“不想说”" required></textarea>
-                <div class="button-row">
-                  <button class="primary" type="submit">发送这段讲述</button>
+                <label class="visually-hidden" for="replyText">您的讲述</label>
+                <div class="interview-composer">
+                  <textarea id="replyText" rows="2" placeholder="说说这张照片背后的故事……" required></textarea>
+                  <div class="composer-toolbar">
+                    <button id="voiceInputButton" class="composer-icon-button voice-input-button" type="button" aria-label="开始语音输入" aria-pressed="false" title="语音输入（推荐使用 Edge 或 Chrome）">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+                        <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0M12 17v4M9 21h6"></path>
+                      </svg>
+                    </button>
+                    <span id="voiceInputStatus" class="voice-input-status" aria-live="polite"></span>
+                    <button id="replySendButton" class="reply-send-button" type="submit" aria-label="发送讲述" title="发送讲述">
+                      <svg class="send-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="composer-hint">按 Enter 发送，Shift + Enter 换行</p>
+                <div class="interview-secondary-actions">
                   <button id="generateButton" class="secondary" type="button">先看看整理后的故事</button>
                 </div>
               </form>
@@ -340,6 +356,6 @@
   </dialog>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/static/app.js?v=20260830-revision-candidate-1" defer></script>
+  <script src="/static/app.js?v=20260831-voice-composer-1" defer></script>
 </body>
 </html>
