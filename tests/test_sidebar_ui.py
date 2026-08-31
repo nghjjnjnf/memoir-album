@@ -52,8 +52,11 @@ def test_brand_aligns_with_sidebar_and_has_memoir_album_icon():
     styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
 
     assert 'class="brand-mark"' in html
-    assert 'class="brand-album"' in html
-    assert 'class="brand-memory-head"' in html
+    assert 'class="brand-book-cover"' in html
+    assert 'class="brand-book-spine"' in html
+    assert 'class="brand-monogram"' in html
+    assert ">SY</text>" in html
+    assert "brand-memory-head" not in html
     assert "岁影" in html and "Memoir Album" in html
     assert "padding: 11px 28px;" in styles
     assert ".brand-block {\n  grid-column: 1;" in styles
