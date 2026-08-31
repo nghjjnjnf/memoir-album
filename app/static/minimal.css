@@ -542,7 +542,16 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 .reply-send-button:disabled { color: #a5ada8; background: #e7ebe8; border-color: #e7ebe8; opacity: 1; }
 .reply-send-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2.15; stroke-linecap: round; stroke-linejoin: round; }
 .reply-send-button.is-thinking { color: #fff; background: #52675b; border-color: #52675b; cursor: wait; }
-.reply-send-button.is-thinking .send-arrow { animation: reply-arrow-spin .78s linear infinite; }
+.reply-send-button.is-thinking .send-arrow { display: none; }
+.reply-send-button.is-thinking::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: reply-arrow-spin .75s linear infinite;
+}
 .composer-hint { margin: 7px 4px 0; color: #909792; font-size: 11px; text-align: right; }
 .composer-generate-button {
   min-height: 38px;
