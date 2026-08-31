@@ -666,8 +666,28 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 }
 .autobiography-cover::before, .autobiography-cover::after { display: none; }
 .autobiography-cover h2 { color: #2d3932; font-family: var(--font-reading); font-weight: 700; letter-spacing: .03em; }
-.autobiography-portrait { background: #f0f4f0; border-color: #dce5de; }
-.autobiography-preface, .autobiography-afterword { background: #fafaf8; border-color: var(--line); }
+.autobiography-opening {
+  max-width: 850px;
+  margin: 28px auto;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.autobiography-opening .autobiography-portrait,
+.autobiography-opening .autobiography-preface {
+  max-width: none;
+  margin: 0;
+  padding: 27px clamp(22px, 5vw, 48px);
+  border: 0;
+  border-radius: 0;
+}
+.autobiography-opening .autobiography-portrait { background: #f0f4f0; }
+.autobiography-opening .autobiography-preface {
+  background: #fff;
+  border-top: 1px solid #e1e7e2;
+}
+.autobiography-afterword { background: #fafaf8; border-color: var(--line); }
 .autobiography-section { border-color: var(--line); border-radius: 10px; box-shadow: none; }
 .autobiography-photo { border-color: var(--line); box-shadow: 0 4px 14px rgba(32, 44, 37, .07); }
 .autobiography-insight { background: #f3f6f2; border-left-color: #869c8c; }

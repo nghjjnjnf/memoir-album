@@ -66,6 +66,13 @@ def test_interview_composer_supports_voice_arrow_and_optimistic_message():
 def test_book_page_hides_internal_review_metrics():
     html = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "minimal.css").read_text(encoding="utf-8")
 
     assert 'id="bookReview"' not in html
     assert "第三人称终审通过 · 照片覆盖" not in script
+    opening = html.index('class="autobiography-opening"')
+    portrait = html.index('id="bookCharacterPortrait"')
+    preface = html.index('id="bookPreface"')
+    assert opening < portrait < preface
+    assert ".autobiography-opening .autobiography-portrait" in styles
+    assert ".autobiography-opening .autobiography-preface" in styles
