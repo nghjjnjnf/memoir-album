@@ -274,7 +274,19 @@ def user_context_slots(user_title: str = "", note: str = "") -> dict[str, str]:
     }
 
 
+OPENING_INTRO = "您好呀，我是小欣，最喜欢听照片背后的故事啦。"
+
+
 def opening_from_observation(
+    observation: dict[str, Any] | None,
+    user_title: str = "",
+    note: str = "",
+) -> str:
+    """开场白：先以小欣的身份自我介绍，再接具体的首个问题。"""
+    return f"{OPENING_INTRO}{_opening_body(observation, user_title, note)}"
+
+
+def _opening_body(
     observation: dict[str, Any] | None,
     user_title: str = "",
     note: str = "",
