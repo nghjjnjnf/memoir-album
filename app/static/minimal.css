@@ -253,16 +253,18 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 .sidebar .item-list.empty-text { padding: 10px 8px; color: #929994; font-size: 12px; }
 
 .privacy-note {
+  margin-top: auto;
   padding: 14px 15px;
   gap: 5px;
   color: #66716a;
   background: transparent;
   border: 1px solid var(--line);
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.55;
 }
 .privacy-note::before { display: none; }
-.privacy-note strong { color: #47544c; }
+.privacy-note strong { color: #47544c; font-size: 11px; font-weight: 650; }
 
 .welcome {
   min-height: 420px;

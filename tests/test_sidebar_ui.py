@@ -20,6 +20,8 @@ def test_chat_style_project_sidebar_structure():
     assert ".layout {\n  width: 100%;\n  margin: 0;" in styles
     assert "dialog.showModal()" in script
     assert ".project-create-dialog::backdrop" in styles
+    assert ".privacy-note {\n  margin-top: auto;" in styles
+    assert ".privacy-note strong { color: #47544c; font-size: 11px;" in styles
 
 
 def test_workspace_tabs_belong_to_selected_project():
