@@ -74,5 +74,7 @@ def test_book_page_hides_internal_review_metrics():
     portrait = html.index('id="bookCharacterPortrait"')
     preface = html.index('id="bookPreface"')
     assert opening < portrait < preface
+    assert ".autobiography-cover {\n  width: 50%;" in styles
+    assert "grid-template-columns: minmax(0, 1fr);" in styles
     assert ".autobiography-opening .autobiography-portrait" in styles
     assert ".autobiography-opening .autobiography-preface" in styles

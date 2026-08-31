@@ -657,16 +657,26 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
 }
 
 .autobiography-cover {
-  margin: -1px -1px 28px;
-  padding: 58px clamp(24px, 7vw, 78px) 50px;
+  width: 50%;
+  margin: 24px auto 28px;
+  padding: 52px 36px 44px;
   color: #2f3b35;
   background: #f4f6f2;
-  border-color: var(--line);
-  border-radius: 15px 15px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 15px;
 }
 .autobiography-cover::before, .autobiography-cover::after { display: none; }
-.autobiography-cover h2 { color: #2d3932; font-family: var(--font-reading); font-weight: 700; letter-spacing: .03em; }
+.autobiography-cover h2 {
+  color: #2d3932;
+  font-family: var(--font-reading);
+  font-size: clamp(34px, 3.4vw, 48px);
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
 .autobiography-opening {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   max-width: 850px;
   margin: 28px auto;
   overflow: hidden;
@@ -766,6 +776,8 @@ input::placeholder, textarea::placeholder { color: #9ba39e; }
   .sidebar { min-height: 0; max-height: none; position: static; order: 2; }
   .workspace { order: 1; }
   .upload-grid, .interview-layout { grid-template-columns: 1fr; }
+  .autobiography-cover { width: calc(100% - 32px); }
+  .autobiography-cover h2 { white-space: normal; }
 }
 
 @media (max-width: 760px) {
